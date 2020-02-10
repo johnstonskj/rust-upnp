@@ -1,0 +1,27 @@
+[package]
+name = "upnp"
+description = "UPnP Protocols"
+version = "0.1.0"
+authors = ["Simon Johnston <johnstonskj@gmail.com>"]
+edition = "2018"
+license = "MIT"
+readme = "README.md"
+publish = true
+default-run = "upnp"
+
+[[bin]]
+name = "upnp"
+path = "src/bin/upnp.rs"
+required-features = ["command_line"]
+
+[features]
+default = []
+command_line = ["human-panic", "structopt", "tracing-subscriber"]
+
+[dependencies]
+tracing = "0.1"
+
+# Command-Line feature dependencies
+human-panic = { optional = true, version = "1.0" }
+structopt = { optional = true, version = "0.3" }
+tracing-subscriber = { optional = true, feature="env-filter", version = "0.2" }
