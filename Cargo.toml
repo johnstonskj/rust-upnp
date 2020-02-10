@@ -1,9 +1,11 @@
 [package]
 name = "upnp"
-description = "UPnP Protocols"
 version = "0.1.0"
 authors = ["Simon Johnston <johnstonskj@gmail.com>"]
 edition = "2018"
+description = "UPnP protocol implementations"
+documentation = "https://docs.rs/upnp/"
+repository = "https://github.com/johnstonskj/rust-upnp.git"
 license = "MIT"
 readme = "README.md"
 publish = true
