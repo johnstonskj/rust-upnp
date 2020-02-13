@@ -1,9 +1,17 @@
 /*!
 
-More Information:
+_UPnP Device Architecture_ (UDA).
+
+# Supported Components
+
+* _Simple Service Discovery Protocol_ (SSDP)
+* _Service Control Protocol Description_ (SCPD)
+* _General Event Notification Architecture_ (GENA)
+* _Simple Object Access Protocol_ (SOAP)
+
+# More Information
 
 * [UPnP Device Architecture 1.0 ](http://www.upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v1.0.pdf)
-
 */
 
 #![warn(
@@ -14,11 +22,16 @@ More Information:
 )]
 
 #[macro_use]
+extern crate lazy_static;
+
+#[macro_use]
 extern crate tracing;
 
 // ------------------------------------------------------------------------------------------------
 // Modules
 // ------------------------------------------------------------------------------------------------
+
+mod gena;
 
 mod httpu;
 

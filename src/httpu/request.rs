@@ -44,7 +44,7 @@ impl Request {
     }
 
     fn body(&self) -> String {
-        protocol::LINE_SEP.to_string()
+        format!("{}{}", protocol::LINE_SEP, protocol::LINE_SEP)
     }
 }
 

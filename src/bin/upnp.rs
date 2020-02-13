@@ -3,7 +3,7 @@ use std::str::FromStr;
 use structopt::StructOpt;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::FmtSubscriber;
-use upnp::ssdp::*;
+use upnp::ssdp::search::*;
 
 #[macro_use]
 extern crate tracing;
@@ -102,7 +102,7 @@ pub fn main() {
             search_target,
             domain,
             max_wait,
-        } => do_search(search_target, domain, max_wait),
+        } => do_search(args.interface, search_target, domain, max_wait),
         Command::Listen => do_listen(),
     }
 }
@@ -138,12 +138,16 @@ fn init_tracing(verbosity: i8) {
 }
 
 fn do_search(
+    bind_to_interface: Option<String>,
     search_target: Option<CLSearchTarget>,
     domain: Option<String>,
     max_wait_time: Option<u8>,
 ) {
     let mut options = SearchOptions::default();
-    options.network_interface = Some("en5".to_string());
+    options.network_interface = match bind_to_interface {
+        None => Some("en5".to_string()),
+        ni @ Some(_) => ni,
+    };
     if let Some(search_target) = search_target {
         options.search_target = match search_target {
             CLSearchTarget::All => SearchTarget::All,
@@ -168,7 +172,7 @@ fn do_search(
     if let Some(max_wait_time) = max_wait_time {
         options.max_wait_time = max_wait_time;
     }
-    match search(options) {
+    match search_once(options) {
         Ok(responses) => {
             println!("search returned {} results.", responses.len());
             for (index, response) in responses.iter().enumerate() {

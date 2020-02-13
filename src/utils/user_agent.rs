@@ -1,61 +1,74 @@
 use std::env;
-use std::process::Command;
 use std::sync::Once;
-
-const UA_PREFIX: &str = "Rust";
 
 const UA_NAME: &str = env!("CARGO_PKG_NAME");
 
 const UA_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-pub fn make(provided: &Option<String>) -> String {
-    static mut AGENT: String = String::new();
-    static mut COMMENTS: String = String::new();
+pub fn make(product: &Option<String>) -> String {
+    static mut PRODUCT: String = String::new();
+    static mut OP_SYS: String = String::new();
     static CAPTURE: Once = Once::new();
 
     CAPTURE.call_once(|| unsafe {
-        AGENT = format!("{}-{}/{}", UA_PREFIX, UA_NAME, UA_VERSION);
-        COMMENTS = format!("({}; {}; {})", platform(), operating_system(), locale());
+        PRODUCT = format!("Rust-{}/{}", UA_NAME, UA_VERSION);
+        OP_SYS = format!("{}/{}", os::system_name(), os::system_version());
+        info!("Default User-Agent: {} UPnP/2.0 {}", OP_SYS, PRODUCT);
     });
 
-    [
-        provided.clone().unwrap_or_else(String::new),
-        unsafe { AGENT.clone() },
-        unsafe { COMMENTS.clone() },
-    ]
-    .join(" ")
-}
-
-#[cfg(target_os = "windows")]
-#[inline]
-fn platform() -> String {
-    String::from("Windows")
+    format!(
+        "{} UPnP/2.0 {}",
+        unsafe { OP_SYS.clone() },
+        product.clone().unwrap_or(unsafe { PRODUCT.clone() }),
+    )
 }
 
 #[cfg(target_os = "macos")]
-#[inline]
-fn platform() -> String {
-    String::from("Macintosh")
+mod os {
+    use std::process::Command;
+
+    #[inline]
+    pub fn system_name() -> String {
+        let cmd_output = Command::new("sw_vers")
+            .arg("-productName")
+            .output()
+            .expect("Couldn't find `sw_vers`");
+        let output_string = String::from_utf8(cmd_output.stdout).expect("Oh crap");
+        output_string.trim().to_string()
+    }
+
+    #[inline]
+    pub fn system_version() -> String {
+        let cmd_output = Command::new("sw_vers")
+            .arg("-productVersion")
+            .output()
+            .expect("Couldn't find `sw_vers`");
+        let output_string = String::from_utf8(cmd_output.stdout).expect("Oh crap");
+        output_string.trim().to_string()
+    }
 }
 
 #[cfg(all(not(target_os = "macos"), target_family = "unix"))]
-#[inline]
-fn platform() -> String {
-    String::from("Unix")
-}
+mod os {
+    use std::process::Command;
 
-#[cfg(target_family = "unix")]
-#[inline]
-fn operating_system() -> String {
-    let uname_info = Command::new("uname")
-        .arg("-sm")
-        .output()
-        .expect("Couldn't find `uname`");
-    let uname_string = String::from_utf8(uname_info.stdout).expect("Oh crap");
-    uname_string.trim().to_string()
-}
+    #[inline]
+    pub fn system_name() -> String {
+        let cmd_output = Command::new("uname")
+            .arg("-o")
+            .output()
+            .expect("Couldn't find `uname`");
+        let output_string = String::from_utf8(cmd_output.stdout).expect("Oh crap");
+        output_string.trim().to_string()
+    }
 
-#[inline]
-fn locale() -> String {
-    env::var("LANG").unwrap_or_else(|_| String::from("en"))
+    #[inline]
+    pub fn system_version() -> String {
+        let cmd_output = Command::new("uname")
+            .arg("-r")
+            .output()
+            .expect("Couldn't find `uname`");
+        let output_string = String::from_utf8(cmd_output.stdout).expect("Oh crap");
+        output_string.trim().to_string()
+    }
 }

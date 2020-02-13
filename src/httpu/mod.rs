@@ -1,5 +1,6 @@
 /*!
-What's this all about then?
+This module implements the _HTTP Multicast UDP_ (HTTPMU) and _HTTP Unicast UDP_ (HTTPU)  specified
+components.
 */
 
 use crate::utils::interface;
@@ -7,8 +8,7 @@ use std::convert::TryFrom;
 use std::io::Error as IOError;
 use std::io::ErrorKind;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket};
-use std::time::{Duration, SystemTime};
-use tracing::Level;
+use std::time::Duration;
 
 // ------------------------------------------------------------------------------------------------
 // Public Types
@@ -40,11 +40,8 @@ pub struct Options {
 //) -> Result<Response, Error> {
 //}
 
-pub fn broadcast(
-    message: &Request,
-    broadcast_address: &SocketAddrV4,
-    options: &Options,
-) -> Result<Vec<Response>, Error> {
+#[instrument]
+pub fn create_multicast_socket(options: &Options) -> Result<UdpSocket, Error> {
     let local_address = match local_address_for_interface(&options.network_interface) {
         None => SocketAddr::V4(SocketAddrV4::new(
             Ipv4Addr::new(0, 0, 0, 0),
@@ -52,54 +49,83 @@ pub fn broadcast(
         )),
         Some(address) => SocketAddr::new(address, options.local_port),
     };
+    info!("Binding to local address {:?}", local_address);
     let socket = UdpSocket::bind(local_address)?;
 
-    broadcast_using(message, broadcast_address, options, &socket)
+    configure_multicast_socket(&socket, options.timeout, true, true)?;
+    info!(
+        "Socket {:?}, read_timeout: {:?}, multicast_ttl: {}",
+        socket,
+        socket.read_timeout()?,
+        socket.multicast_ttl_v4()?
+    );
+
+    Ok(socket)
 }
 
-pub fn broadcast_using(
+#[instrument]
+pub fn multicast(
     message: &Request,
-    broadcast_address: &SocketAddrV4,
+    multicast_address: &SocketAddrV4,
+    options: &Options,
+) -> Result<Vec<Response>, Error> {
+    let socket = create_multicast_socket(options)?;
+
+    multicast_using(message, multicast_address, options, &socket)
+}
+
+#[instrument]
+pub fn multicast_once(
+    message: &Request,
+    multicast_address: &SocketAddrV4,
+    options: &Options,
+) -> Result<(), Error> {
+    let socket = create_multicast_socket(options)?;
+
+    multicast_once_using(message, multicast_address, options, &socket)
+}
+
+#[instrument]
+pub fn multicast_using(
+    message: &Request,
+    multicast_address: &SocketAddrV4,
     options: &Options,
     socket: &UdpSocket,
 ) -> Result<Vec<Response>, Error> {
-    configure_broadcast_socket(socket, options.timeout, true, true)?;
-
-    let message: String = message.into();
-    info!(
-        "Sending discovery message to address {:?} on interface {:?}",
-        broadcast_address,
-        socket.local_addr()
-    );
-    socket.send_to(message.as_bytes(), broadcast_address)?;
+    multicast_send_using(message, multicast_address, socket)?;
 
     let mut responses: Vec<Response> = Default::default();
 
-    let now = SystemTime::now();
-    let mut buf = [0; 4096];
-    info!("Waiting on discovery responses (recv_from)");
-    match socket.recv_from(&mut buf) {
-        Ok((received, from)) => {
-            event!(
-                Level::INFO,
-                received_bytes = received,
-                "received {} bytes from {:?}, data: {:?}",
-                received,
-                from,
-                &buf[..received]
-            );
-            responses.push(Response::try_from(&buf[..received])?);
-        }
-        Err(e) => {
-            warn!("Error: {:?} @ {:?}", e, now.elapsed());
-            if e.kind() != ErrorKind::WouldBlock {
-                event!(Level::ERROR, "recv function returned error: {:?}", e);
-                return Err(Error::NetworkTransport(e.kind()));
+    loop {
+        let mut buf = [0u8; protocol::BUFFER_SIZE];
+        info!("Waiting on discovery responses (recv_from)");
+        match socket.recv_from(&mut buf) {
+            Ok((received, from)) => {
+                info!("received {} bytes from {:?}", received, from,);
+                responses.push(Response::try_from(&buf[..received])?);
+            }
+            Err(e) => {
+                if e.kind() == ErrorKind::WouldBlock {
+                    info!("socket timed out, no data");
+                    break;
+                } else {
+                    error!("socket read returned error: {:?}", e);
+                    return Err(Error::NetworkTransport(e.kind()));
+                }
             }
         }
     }
-
     Ok(responses)
+}
+
+#[instrument]
+pub fn multicast_once_using(
+    message: &Request,
+    multicast_address: &SocketAddrV4,
+    options: &Options,
+    socket: &UdpSocket,
+) -> Result<(), Error> {
+    multicast_send_using(message, multicast_address, socket)
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -123,10 +149,6 @@ impl Default for Options {
 }
 
 // ------------------------------------------------------------------------------------------------
-// Private Types
-// ------------------------------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------------------------------
 // Private Functions
 // ------------------------------------------------------------------------------------------------
 
@@ -134,27 +156,24 @@ pub fn local_address_for_interface(network_interface: &Option<String>) -> Option
     match network_interface {
         None => None,
         Some(name) => {
-            info!("Looking up address for interface {}", name);
-
             let addresses = interface::ip_addresses(name.clone());
             if addresses.is_empty() {
                 None
             } else {
                 let address = addresses.first().unwrap();
-                Some(address.clone())
+                Some(*address)
             }
         }
     }
 }
 
-fn configure_broadcast_socket(
+fn configure_multicast_socket(
     socket: &UdpSocket,
     timeout: u64,
     local_only: bool,
+
     loop_back: bool,
 ) -> Result<&UdpSocket, Error> {
-    event!(Level::INFO, "Setting socket options...");
-    socket.set_broadcast(true)?;
     socket.set_nonblocking(false)?;
     socket.set_read_timeout(Some(Duration::from_secs(timeout)))?;
     if socket.local_addr().unwrap().is_ipv4() {
@@ -163,15 +182,23 @@ fn configure_broadcast_socket(
     } else {
         socket.set_multicast_loop_v6(loop_back)?;
     }
-    event!(
-        Level::INFO,
-        "... {:?}, broadcast: {}, read_timeout: {:?}, multicast_ttl: {}",
-        socket,
-        socket.broadcast()?,
-        socket.read_timeout()?,
-        socket.multicast_ttl_v4()?
-    );
     Ok(socket)
+}
+
+fn multicast_send_using(
+    message: &Request,
+    multicast_address: &SocketAddrV4,
+    socket: &UdpSocket,
+) -> Result<(), Error> {
+    info!(
+        "multicasting discovery message to address {:?} through interface {:?}",
+        multicast_address,
+        socket.local_addr()
+    );
+
+    let message: String = message.into();
+    socket.send_to(message.as_bytes(), multicast_address)?;
+    Ok(())
 }
 
 // ------------------------------------------------------------------------------------------------

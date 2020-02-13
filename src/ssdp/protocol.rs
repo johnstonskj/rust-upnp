@@ -5,10 +5,30 @@ number of 1900.
 */
 pub const MULTICAST_ADDRESS: &str = "239.255.255.250:1900";
 
+// ------------------------------------------------------------------------------------------------
+
+pub const HTTP_EXTENSION: &str = "\"ssdp:discover\"";
+
+// ------------------------------------------------------------------------------------------------
+
 /**
 From § 1.2.2 Discovery: Search: Request with M-SEARCH
 */
-pub const MSG_SEARCH: &str = "M-SEARCH";
+pub const METHOD_NOTIFY: &str = "NOTIFY";
+
+pub const METHOD_SEARCH: &str = "M-SEARCH";
+
+// ------------------------------------------------------------------------------------------------
+
+pub const HEAD_BOOTID: &str = "BOOTID.UPNP.ORG";
+
+pub const HEAD_CACHE_CONTROL: &str = "CACHE-CONTROL";
+
+pub const HEAD_CONFIGID: &str = "CONFIGID.UPNP.ORG";
+
+pub const HEAD_DATE: &str = "DATE";
+
+pub const HEAD_EXT: &str = "EXT";
 
 pub const HEAD_HOST: &str = "HOST";
 
@@ -28,18 +48,22 @@ increased to accommodate network characteristics such as latency or propagation 
 */
 pub const HEAD_MX: &str = "MX";
 
-pub const HEAD_SERVER: &str = "SERVER";
+pub const HEAD_NEXT_BOOTID: &str = "NEXTBOOTID.UPNP.ORG";
 
-pub const HEAD_USER_AGENT: &str = "USER-AGENT";
+pub const HEAD_SEARCH_PORT: &str = "SEARCHPORT.UPNP.ORG";
+
+pub const HEAD_SECURE_LOCATION: &str = "SECURELOCATION.UPNP.ORG";
+
+pub const HEAD_SERVER: &str = "SERVER";
 
 /**
 Search Target
 */
 pub const HEAD_ST: &str = "ST";
 
+pub const HEAD_USER_AGENT: &str = "USER-AGENT";
+
 /**
 Unique Service Name.
 */
 pub const HEAD_USN: &str = "USN";
-
-pub const HTTP_EXTENSION: &str = "\"ssdp:discover\"";
