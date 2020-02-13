@@ -27,3 +27,5 @@ pub mod ssdp;
 mod scpd;
 
 mod soap;
+
+pub(crate) mod utils;

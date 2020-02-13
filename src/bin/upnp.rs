@@ -14,6 +14,10 @@ struct CommandLine {
     /// The level of logging to perform, from off to trace
     #[structopt(long, short = "v", parse(from_occurrences))]
     verbose: i8,
+
+    #[structopt(long, short)]
+    interface: Option<String>,
+
     #[structopt(subcommand)]
     cmd: Command,
 }
@@ -139,6 +143,7 @@ fn do_search(
     max_wait_time: Option<u8>,
 ) {
     let mut options = SearchOptions::default();
+    options.network_interface = Some("en5".to_string());
     if let Some(search_target) = search_target {
         options.search_target = match search_target {
             CLSearchTarget::All => SearchTarget::All,

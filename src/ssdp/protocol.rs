@@ -30,6 +30,8 @@ pub const HEAD_MX: &str = "MX";
 
 pub const HEAD_SERVER: &str = "SERVER";
 
+pub const HEAD_USER_AGENT: &str = "USER-AGENT";
+
 /**
 Search Target
 */

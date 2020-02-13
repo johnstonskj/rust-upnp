@@ -21,6 +21,8 @@ default = []
 command_line = ["human-panic", "structopt", "tracing-subscriber"]
 
 [dependencies]
+ipnetwork = "0.16"
+pnet = "0.25"
 tracing = "0.1"
 
 # Command-Line feature dependencies
