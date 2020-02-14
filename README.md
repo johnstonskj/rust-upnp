@@ -11,14 +11,6 @@ A Rust crate providing basic Universal Plug and Play (UPnP) protocol implementat
 > _UPnP technology allows devices to connect seamlessly and to simplify network implementation in the home and 
 > corporate environments_ — [Open Connectivity Foundation](https://openconnectivity.org/developer/specifications/upnp-resources/upnp/).
 
-UPnP is standardized in 
-[ISO/IEC 29341-1-1:2011 (ISO/IEC 29341-1-1:2011)](https://www.iso.org/standard/57494.html) UPnP Device 
-Architecture — Part 1-1: UPnP Device Architecture Version 1.1 and 
-[UPnP Standards and Architecture](https://openconnectivity.org/developer/specifications/upnp-resources/upnp/) where
-the version 2.0 standard and device types are provided in more detail.
-An informal overview can be found in 
-[Universal Plug and Play — Wikipedia](https://en.wikipedia.org/wiki/Universal_Plug_and_Play).
-
 ## API
 
 TBD
