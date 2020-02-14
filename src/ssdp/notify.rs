@@ -1,7 +1,7 @@
 use crate::httpu::{multicast_once, Options as MulticastOptions, Request, RequestBuilder};
 use crate::ssdp::protocol;
 use crate::utils::user_agent;
-use crate::Error;
+use crate::{Error, SpecVersion};
 
 #[derive(Clone, Debug)]
 pub struct Device {
@@ -14,6 +14,7 @@ pub struct Device {
 
 #[derive(Clone, Debug)]
 pub struct Options {
+    pub spec_version: SpecVersion,
     pub network_interface: Option<String>,
     pub max_age: Option<u16>,
     pub user_agent: Option<String>,
