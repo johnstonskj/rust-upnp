@@ -19,15 +19,15 @@ pub struct Options {
     pub user_agent: Option<String>,
 }
 
-fn device_available(_device: &mut Device, _options: Options) -> Result<(), Error> {
+pub fn device_available(_device: &mut Device, _options: Options) -> Result<(), Error> {
     Ok(())
 }
 
-fn device_update(_device: &mut Device, _options: Options) -> Result<(), Error> {
+pub fn device_update(_device: &mut Device, _options: Options) -> Result<(), Error> {
     Ok(())
 }
 
-fn device_unavailable(device: &mut Device, options: Options) -> Result<(), Error> {
+pub fn device_unavailable(device: &mut Device, options: Options) -> Result<(), Error> {
     let next_boot_id = device.boot_id + 1;
     let message: Request = RequestBuilder::new(protocol::METHOD_SEARCH)
         .add_header(protocol::HEAD_HOST, protocol::MULTICAST_ADDRESS)
