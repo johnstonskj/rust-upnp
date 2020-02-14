@@ -26,6 +26,10 @@ pub const HEAD_CACHE_CONTROL: &str = "CACHE-CONTROL";
 
 pub const HEAD_CONFIGID: &str = "CONFIGID.UPNP.ORG";
 
+pub const HEAD_CP_FN: &str = "CPFN.UPNP.ORG";
+
+pub const HEAD_CP_UUID: &str = "CPUUID.UPNP.ORG";
+
 pub const HEAD_DATE: &str = "DATE";
 
 pub const HEAD_EXT: &str = "EXT";
@@ -55,6 +59,8 @@ pub const HEAD_SEARCH_PORT: &str = "SEARCHPORT.UPNP.ORG";
 pub const HEAD_SECURE_LOCATION: &str = "SECURELOCATION.UPNP.ORG";
 
 pub const HEAD_SERVER: &str = "SERVER";
+
+pub const HEAD_TCP_PORT: &str = "TCPPORT.UPNP.ORG";
 
 /**
 Search Target
