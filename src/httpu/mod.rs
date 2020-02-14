@@ -45,7 +45,7 @@ pub fn create_multicast_socket(options: &Options) -> Result<UdpSocket, Error> {
         )),
         Some(address) => SocketAddr::new(address, options.local_port),
     };
-    info!("Binding to local address {:?}", local_address);
+    trace!("Binding to local address {:?}", local_address);
     let socket = UdpSocket::bind(local_address)?;
 
     configure_multicast_socket(
@@ -181,7 +181,7 @@ fn configure_multicast_socket(
         socket.set_multicast_ttl_v4(if local_only { 1 } else { 10 })?;
         socket.set_multicast_loop_v4(loop_back)?;
     } else {
-        info!("Setting IPV6 loop_back: {}", loop_back);
+        trace!("Setting IPV6 loop_back: {}", loop_back);
         socket.set_multicast_loop_v6(loop_back)?;
     }
     Ok(socket)
