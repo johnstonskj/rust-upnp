@@ -4,21 +4,15 @@ components.
 */
 
 use crate::utils::interface;
+use crate::Error;
 use std::convert::TryFrom;
-use std::io::Error as IOError;
-use std::io::ErrorKind;
+use std::io::ErrorKind as IOErrorKind;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket};
 use std::time::Duration;
 
 // ------------------------------------------------------------------------------------------------
 // Public Types
 // ------------------------------------------------------------------------------------------------
-
-#[derive(Clone, Debug)]
-pub enum Error {
-    NetworkTransport(ErrorKind),
-    MessageFormat,
-}
 
 #[derive(Clone, Debug)]
 pub struct Options {
@@ -105,7 +99,7 @@ pub fn multicast_using(
                 responses.push(Response::try_from(&buf[..received])?);
             }
             Err(e) => {
-                if e.kind() == ErrorKind::WouldBlock {
+                if e.kind() == IOErrorKind::WouldBlock {
                     info!("socket timed out, no data");
                     break;
                 } else {
@@ -131,12 +125,6 @@ pub fn multicast_once_using(
 // ------------------------------------------------------------------------------------------------
 // Implementations
 // ------------------------------------------------------------------------------------------------
-
-impl From<IOError> for Error {
-    fn from(e: IOError) -> Self {
-        Error::NetworkTransport(e.kind())
-    }
-}
 
 impl Default for Options {
     fn default() -> Self {

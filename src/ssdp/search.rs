@@ -1,8 +1,8 @@
-use crate::httpu::{
-    multicast, Error, Options as MulticastOptions, Request, RequestBuilder, Response,
-};
+use crate::httpu::{multicast, Options as MulticastOptions, Request, RequestBuilder, Response};
 use crate::ssdp::protocol;
 use crate::utils::{headers, user_agent};
+use crate::{Error, MessageErrorKind, SpecVersion};
+use regex::Regex;
 use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::{Display, Error as FmtError, Formatter};
@@ -24,6 +24,7 @@ pub enum SearchTarget {
 
 #[derive(Clone, Debug)]
 pub struct SearchOptions {
+    pub spec_version: SpecVersion,
     pub network_interface: Option<String>,
     pub search_target: SearchTarget,
     pub max_wait_time: u8,
@@ -48,11 +49,11 @@ pub struct SearchResponse {
 pub struct SingleResponse {
     max_age: u64,
     date: String,
-    server_os_version: String,
-    server_produce_version: String,
+    server: String,
     location: String,
     search_target: SearchTarget,
     service_name: String,
+    boot_id: u64,
     other_headers: HashMap<String, String>,
 }
 
@@ -65,7 +66,7 @@ pub fn search(
     options: SearchOptions,
     previous_response: SearchResponse,
 ) -> Result<SearchResponse, Error> {
-    Err(Error::MessageFormat)
+    Err(Error::MessageFormat(MessageErrorKind::VersionMismatch))
 }
 
 #[instrument]
@@ -123,6 +124,7 @@ impl Display for SearchTarget {
 impl Default for SearchOptions {
     fn default() -> Self {
         SearchOptions {
+            spec_version: SpecVersion::V10,
             network_interface: None,
             search_target: SearchTarget::RootDevices,
             max_wait_time: 2,
@@ -160,11 +162,46 @@ impl TryFrom<Response> for SingleResponse {
             response.headers.get(protocol::HEAD_EXT).unwrap(),
             protocol::HEAD_EXT,
         )?;
-        let boot_id = headers::check_parsed_value::<u64>(
-            response.headers.get(protocol::HEAD_BOOTID).unwrap(),
-            protocol::HEAD_BOOTID,
-        )?;
 
-        Err(Error::MessageFormat)
+        let remaining_headers: HashMap<String, String> = response
+            .headers
+            .clone()
+            .iter()
+            .filter(|(k, _)| REQUIRED_HEADERS.contains(&k.as_str()))
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+
+        Ok(SingleResponse {
+            boot_id: headers::check_parsed_value::<u64>(
+                response.headers.get(protocol::HEAD_BOOTID).unwrap(),
+                protocol::HEAD_BOOTID,
+            )?,
+            max_age: headers::check_parsed_value::<u64>(
+                &headers::check_regex(
+                    response.headers.get(protocol::HEAD_CACHE_CONTROL).unwrap(),
+                    protocol::HEAD_CACHE_CONTROL,
+                    &Regex::new(r"max-age[ ]*=[ ]*(\d+)").unwrap(),
+                )?,
+                protocol::HEAD_CACHE_CONTROL,
+            )?,
+            date: headers::check_not_empty(
+                response.headers.get(protocol::HEAD_DATE).unwrap(),
+                protocol::HEAD_DATE,
+            )?,
+            server: headers::check_not_empty(
+                response.headers.get(protocol::HEAD_SERVER).unwrap(),
+                protocol::HEAD_SERVER,
+            )?,
+            location: headers::check_not_empty(
+                response.headers.get(protocol::HEAD_LOCATION).unwrap(),
+                protocol::HEAD_LOCATION,
+            )?,
+            search_target: SearchTarget::All,
+            service_name: headers::check_not_empty(
+                response.headers.get(protocol::HEAD_USN).unwrap(),
+                protocol::HEAD_USN,
+            )?,
+            other_headers: remaining_headers,
+        })
     }
 }

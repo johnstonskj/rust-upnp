@@ -1,6 +1,7 @@
-use crate::httpu::{multicast_once, Error, Options as MulticastOptions, Request, RequestBuilder};
+use crate::httpu::{multicast_once, Options as MulticastOptions, Request, RequestBuilder};
 use crate::ssdp::protocol;
 use crate::utils::user_agent;
+use crate::Error;
 
 #[derive(Clone, Debug)]
 pub struct Device {
@@ -18,11 +19,11 @@ pub struct Options {
     pub user_agent: Option<String>,
 }
 
-fn device_available(device: &mut Device, options: Options) -> Result<(), Error> {
+fn device_available(_device: &mut Device, _options: Options) -> Result<(), Error> {
     Ok(())
 }
 
-fn device_update(device: &mut Device, options: Options) -> Result<(), Error> {
+fn device_update(_device: &mut Device, _options: Options) -> Result<(), Error> {
     Ok(())
 }
 

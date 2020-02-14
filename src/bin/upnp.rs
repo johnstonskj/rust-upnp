@@ -145,7 +145,7 @@ fn do_search(
 ) {
     let mut options = SearchOptions::default();
     options.network_interface = match bind_to_interface {
-        None => Some("en5".to_string()),
+        None => Some("en0".to_string()),
         ni @ Some(_) => ni,
     };
     if let Some(search_target) = search_target {

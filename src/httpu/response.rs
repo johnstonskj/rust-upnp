@@ -2,12 +2,13 @@
 What's this all about then?
 */
 
-use crate::httpu::{protocol, Error};
+use crate::httpu::protocol;
+use crate::{Error, MessageErrorKind};
 use regex::Regex;
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::str::from_utf8;
 use std::str::FromStr;
-use std::str::{from_utf8, Utf8Error};
 
 // ------------------------------------------------------------------------------------------------
 // Public Types
@@ -61,12 +62,6 @@ impl TryFrom<&[u8]> for Response {
     }
 }
 
-impl From<Utf8Error> for Error {
-    fn from(_: Utf8Error) -> Self {
-        Error::MessageFormat
-    }
-}
-
 // ------------------------------------------------------------------------------------------------
 // Private Functions
 // ------------------------------------------------------------------------------------------------
@@ -89,7 +84,9 @@ fn decode_status_line(line: String) -> Result<ResponseStatus, Error> {
     match RE.captures(&line) {
         None => {
             error!("could not decode status line '{}'", line);
-            Err(Error::MessageFormat)
+            Err(Error::MessageFormat(
+                MessageErrorKind::InvalidResponseStatus,
+            ))
         }
         Some(captured) => {
             let status_code = u16::from_str(captured.get(2).unwrap().as_str()).unwrap();
@@ -102,7 +99,9 @@ fn decode_status_line(line: String) -> Result<ResponseStatus, Error> {
                 })
             } else {
                 error!("server returned error '{}'", status_code);
-                Err(Error::MessageFormat)
+                Err(Error::MessageFormat(
+                    MessageErrorKind::InvalidResponseStatus,
+                ))
             }
         }
     }
@@ -124,7 +123,7 @@ fn decode_header(line: String) -> Result<(String, String), Error> {
     match RE.captures(&line) {
         None => {
             error!("could not decode header '{}'", line);
-            Err(Error::MessageFormat)
+            Err(Error::MessageFormat(MessageErrorKind::InvalidHeaderFormat))
         }
         Some(captured) => Ok((
             captured.get(1).unwrap().as_str().to_uppercase(),

@@ -1,4 +1,4 @@
-use crate::httpu::Error;
+use crate::{Error, MessageErrorKind};
 use regex::Regex;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -14,7 +14,7 @@ pub fn check_required(headers: &HashMap<String, String>, required: &[&str]) -> R
         Ok(())
     } else {
         error!("message missing headers '{:?}'", missing_headers);
-        Err(Error::MessageFormat)
+        Err(Error::MessageFormat(MessageErrorKind::MissingRequiredField))
     }
 }
 
@@ -24,12 +24,12 @@ where
 {
     match header_value.parse::<T>() {
         Ok(v) => Ok(v),
-        Err(e) => {
+        Err(_) => {
             error!(
                 "header '{}', value '{}' could not be parsed",
                 name, header_value
             );
-            Err(Error::MessageFormat)
+            Err(Error::MessageFormat(MessageErrorKind::InvalidFieldValue))
         }
     }
 }
@@ -42,7 +42,7 @@ pub fn check_regex(header_value: &String, name: &str, regex: &Regex) -> Result<S
                 "header '{}', value '{}' did not match regex",
                 name, header_value
             );
-            Err(Error::MessageFormat)
+            Err(Error::MessageFormat(MessageErrorKind::InvalidFieldValue))
         }
     }
 }
@@ -55,7 +55,7 @@ pub fn check_empty(header_value: &String, name: &str) -> Result<(), Error> {
             "header '{}', value '{}' should be empty",
             name, header_value
         );
-        Err(Error::MessageFormat)
+        Err(Error::MessageFormat(MessageErrorKind::InvalidFieldValue))
     }
 }
 
@@ -67,6 +67,6 @@ pub fn check_not_empty(header_value: &String, name: &str) -> Result<String, Erro
             "header '{}', value '{}' should not be empty",
             name, header_value
         );
-        Err(Error::MessageFormat)
+        Err(Error::MessageFormat(MessageErrorKind::InvalidFieldValue))
     }
 }

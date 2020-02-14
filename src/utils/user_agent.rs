@@ -1,4 +1,3 @@
-use std::env;
 use std::sync::Once;
 
 const UA_NAME: &str = env!("CARGO_PKG_NAME");
