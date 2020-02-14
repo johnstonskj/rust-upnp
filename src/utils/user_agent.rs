@@ -1,10 +1,11 @@
+use crate::SpecVersion;
 use std::sync::Once;
 
 const UA_NAME: &str = env!("CARGO_PKG_NAME");
 
 const UA_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-pub fn make(product: &Option<String>) -> String {
+pub fn make(spec_version: &SpecVersion, product: &Option<String>) -> String {
     static mut PRODUCT: String = String::new();
     static mut OP_SYS: String = String::new();
     static CAPTURE: Once = Once::new();
@@ -12,12 +13,13 @@ pub fn make(product: &Option<String>) -> String {
     CAPTURE.call_once(|| unsafe {
         PRODUCT = format!("Rust-{}/{}", UA_NAME, UA_VERSION);
         OP_SYS = format!("{}/{}", os::system_name(), os::system_version());
-        info!("Default User-Agent: {} UPnP/2.0 {}", OP_SYS, PRODUCT);
+        trace!("Default User-Agent: {} UPnP/? {}", OP_SYS, PRODUCT);
     });
 
     format!(
-        "{} UPnP/2.0 {}",
+        "{} UPnP/{} {}",
         unsafe { OP_SYS.clone() },
+        spec_version.to_string(),
         product.clone().unwrap_or(unsafe { PRODUCT.clone() }),
     )
 }

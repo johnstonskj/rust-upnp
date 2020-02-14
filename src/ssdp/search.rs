@@ -78,7 +78,7 @@ pub fn search_once(options: SearchOptions) -> Result<Vec<SingleResponse>, Error>
         .add_header(protocol::HEAD_MAN, protocol::HTTP_EXTENSION)
         .add_header(
             protocol::HEAD_USER_AGENT,
-            &user_agent::make(&options.user_agent),
+            &user_agent::make(&options.spec_version, &options.user_agent),
         )
         .into();
 

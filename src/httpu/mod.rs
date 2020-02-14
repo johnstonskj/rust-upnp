@@ -173,9 +173,10 @@ fn configure_multicast_socket(
     socket.set_nonblocking(false)?;
     socket.set_read_timeout(Some(Duration::from_secs(timeout)))?;
     if socket.local_addr().unwrap().is_ipv4() {
-        info!(
+        trace!(
             "Setting IPV4 multicast_ttl: {}, loop_back: {}",
-            local_only, loop_back
+            local_only,
+            loop_back
         );
         socket.set_multicast_ttl_v4(if local_only { 1 } else { 10 })?;
         socket.set_multicast_loop_v4(loop_back)?;
@@ -191,7 +192,7 @@ fn multicast_send_using(
     multicast_address: &SocketAddrV4,
     socket: &UdpSocket,
 ) -> Result<(), Error> {
-    info!(
+    trace!(
         "multicasting discovery message to address {:?} through interface {:?}",
         multicast_address,
         socket.local_addr()

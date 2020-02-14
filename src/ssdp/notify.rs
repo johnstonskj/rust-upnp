@@ -35,7 +35,7 @@ pub fn device_unavailable(device: &mut Device, options: Options) -> Result<(), E
         .add_header(protocol::HEAD_USN, &device.service_name)
         .add_header(
             protocol::HEAD_USER_AGENT,
-            &user_agent::make(&options.user_agent),
+            &user_agent::make(&options.spec_version, &options.user_agent),
         )
         .into();
 
