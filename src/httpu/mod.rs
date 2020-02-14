@@ -19,6 +19,8 @@ pub struct Options {
     pub network_interface: Option<String>,
     pub local_port: u16,
     pub timeout: u64,
+    pub local_network_only: bool,
+    pub loop_back_also: bool,
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -46,7 +48,12 @@ pub fn create_multicast_socket(options: &Options) -> Result<UdpSocket, Error> {
     info!("Binding to local address {:?}", local_address);
     let socket = UdpSocket::bind(local_address)?;
 
-    configure_multicast_socket(&socket, options.timeout, true, true)?;
+    configure_multicast_socket(
+        &socket,
+        options.timeout,
+        options.local_network_only,
+        options.loop_back_also,
+    )?;
     info!(
         "Socket {:?}, read_timeout: {:?}, multicast_ttl: {}",
         socket,
@@ -132,6 +139,8 @@ impl Default for Options {
             network_interface: None,
             local_port: 0,
             timeout: protocol::DEFAULT_TIMEOUT,
+            local_network_only: false,
+            loop_back_also: false,
         }
     }
 }
@@ -159,15 +168,19 @@ fn configure_multicast_socket(
     socket: &UdpSocket,
     timeout: u64,
     local_only: bool,
-
     loop_back: bool,
 ) -> Result<&UdpSocket, Error> {
     socket.set_nonblocking(false)?;
     socket.set_read_timeout(Some(Duration::from_secs(timeout)))?;
     if socket.local_addr().unwrap().is_ipv4() {
+        info!(
+            "Setting IPV4 multicast_ttl: {}, loop_back: {}",
+            local_only, loop_back
+        );
         socket.set_multicast_ttl_v4(if local_only { 1 } else { 10 })?;
         socket.set_multicast_loop_v4(loop_back)?;
     } else {
+        info!("Setting IPV6 loop_back: {}", loop_back);
         socket.set_multicast_loop_v6(loop_back)?;
     }
     Ok(socket)
