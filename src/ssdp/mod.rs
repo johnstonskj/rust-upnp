@@ -7,8 +7,8 @@ components.
 // Modules
 // ------------------------------------------------------------------------------------------------
 
-mod protocol;
-
 pub mod search;
 
 pub mod notify;
+
+mod protocol;

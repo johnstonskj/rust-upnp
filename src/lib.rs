@@ -97,6 +97,8 @@ impl FromStr for SpecVersion {
     }
 }
 
+// ------------------------------------------------------------------------------------------------
+
 impl From<IOError> for Error {
     fn from(e: IOError) -> Self {
         Error::NetworkTransport(e.kind())
@@ -113,11 +115,11 @@ impl From<Utf8Error> for Error {
 // Modules
 // ------------------------------------------------------------------------------------------------
 
+pub mod ssdp;
+
 mod gena;
 
 mod httpu;
-
-pub mod ssdp;
 
 mod scpd;
 
