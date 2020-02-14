@@ -1,4 +1,4 @@
-use crate::httpu::{multicast_once, Options as MulticastOptions, Request, RequestBuilder};
+use crate::httpu::{multicast_once, Options as MulticastOptions, RequestBuilder};
 use crate::ssdp::protocol;
 use crate::utils::user_agent;
 use crate::{Error, SpecVersion};
@@ -30,17 +30,17 @@ pub fn device_update(_device: &mut Device, _options: Options) -> Result<(), Erro
 
 pub fn device_unavailable(device: &mut Device, options: Options) -> Result<(), Error> {
     let next_boot_id = device.boot_id + 1;
-    let message: Request = RequestBuilder::new(protocol::METHOD_SEARCH)
+    let mut message_builder = RequestBuilder::new(protocol::METHOD_SEARCH);
+    message_builder
         .add_header(protocol::HEAD_HOST, protocol::MULTICAST_ADDRESS)
         .add_header(protocol::HEAD_USN, &device.service_name)
         .add_header(
             protocol::HEAD_USER_AGENT,
             &user_agent::make(&options.spec_version, &options.user_agent),
-        )
-        .into();
+        );
 
     multicast_once(
-        &message,
+        &message_builder.into(),
         &protocol::MULTICAST_ADDRESS.parse().unwrap(),
         &options.into(),
     )?;

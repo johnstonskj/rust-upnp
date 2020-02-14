@@ -45,8 +45,8 @@ impl RequestBuilder {
     }
 }
 
-impl From<&mut RequestBuilder> for Request {
-    fn from(rb: &mut RequestBuilder) -> Self {
+impl From<RequestBuilder> for Request {
+    fn from(rb: RequestBuilder) -> Self {
         rb.request.clone()
     }
 }

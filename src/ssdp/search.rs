@@ -1,5 +1,5 @@
-use crate::httpu::{multicast, Options as MulticastOptions, Request, RequestBuilder, Response};
-use crate::ssdp::protocol;
+use crate::httpu::{multicast, Options as MulticastOptions, RequestBuilder, Response};
+use crate::ssdp::{protocol, ControlPoint};
 use crate::utils::{headers, user_agent};
 use crate::{Error, MessageErrorKind, SpecVersion};
 use regex::Regex;
@@ -25,11 +25,11 @@ pub enum SearchTarget {
 #[derive(Clone, Debug)]
 pub struct SearchOptions {
     pub spec_version: SpecVersion,
-    pub network_interface: Option<String>,
     pub search_target: SearchTarget,
+    pub network_interface: Option<String>,
     pub max_wait_time: u8,
     pub user_agent: Option<String>,
-    pub minimum_refresh: u16,
+    pub control_point: Option<ControlPoint>,
 }
 
 #[derive(Clone, Debug)]
@@ -41,6 +41,7 @@ struct CachedResponse {
 #[derive(Clone, Debug)]
 pub struct SearchResponse {
     options: SearchOptions,
+    minimum_refresh: u16,
     last_updated: u64,
     responses: Vec<CachedResponse>,
 }
@@ -66,24 +67,48 @@ pub fn search(
     options: SearchOptions,
     previous_response: SearchResponse,
 ) -> Result<SearchResponse, Error> {
+    options.validate()?;
     Err(Error::MessageFormat(MessageErrorKind::VersionMismatch))
 }
 
 #[instrument]
 pub fn search_once(options: SearchOptions) -> Result<Vec<SingleResponse>, Error> {
-    let message: Request = RequestBuilder::new(protocol::METHOD_SEARCH)
+    options.validate()?;
+    let mut message_builder = RequestBuilder::new(protocol::METHOD_SEARCH);
+    // All headers from the original 1.0 specification.
+    message_builder
         .add_header(protocol::HEAD_HOST, protocol::MULTICAST_ADDRESS)
-        .add_header(protocol::HEAD_ST, &options.search_target.to_string())
-        .add_header(protocol::HEAD_MX, &format!("{}", options.max_wait_time))
         .add_header(protocol::HEAD_MAN, protocol::HTTP_EXTENSION)
-        .add_header(
+        .add_header(protocol::HEAD_MX, &format!("{}", options.max_wait_time))
+        .add_header(protocol::HEAD_ST, &options.search_target.to_string());
+    // Headers added by 1.1 specification
+    if options.spec_version >= SpecVersion::V11 {
+        message_builder.add_header(
             protocol::HEAD_USER_AGENT,
             &user_agent::make(&options.spec_version, &options.user_agent),
-        )
-        .into();
-
+        );
+    }
+    // Headers added by 2.0 specification
+    if options.spec_version >= SpecVersion::V20 {
+        match &options.control_point {
+            Some(cp) => {
+                message_builder.add_header(protocol::HEAD_CP_FN, &cp.friendly_name);
+                if let Some(port) = cp.port {
+                    message_builder.add_header(protocol::HEAD_TCP_PORT, &port.to_string());
+                }
+                if let Some(uuid) = &cp.uuid {
+                    message_builder.add_header(protocol::HEAD_TCP_PORT, &uuid);
+                }
+            }
+            None => {
+                error!("missing control point, required for UPnP/2.0");
+                return Err(Error::MessageFormat(MessageErrorKind::MissingRequiredField));
+            }
+        }
+    }
+    println!("{:#?}", &message_builder);
     let raw_responses = multicast(
-        &message,
+        &message_builder.into(),
         &protocol::MULTICAST_ADDRESS.parse().unwrap(),
         &options.into(),
     )?;
@@ -93,6 +118,36 @@ pub fn search_once(options: SearchOptions) -> Result<Vec<SingleResponse>, Error>
         responses.push(raw_response.try_into()?);
     }
     Ok(responses)
+}
+
+#[instrument]
+pub fn search_device_once(options: SearchOptions) -> Result<Vec<SingleResponse>, Error> {
+    options.validate()?;
+    if options.spec_version >= SpecVersion::V11 {
+        let mut message_builder = RequestBuilder::new(protocol::METHOD_SEARCH);
+        message_builder
+            .add_header(protocol::HEAD_HOST, protocol::MULTICAST_ADDRESS)
+            .add_header(protocol::HEAD_MAN, protocol::HTTP_EXTENSION)
+            .add_header(protocol::HEAD_ST, &options.search_target.to_string())
+            .add_header(
+                protocol::HEAD_USER_AGENT,
+                &user_agent::make(&options.spec_version, &options.user_agent),
+            );
+
+        let raw_responses = multicast(
+            &message_builder.into(),
+            &protocol::MULTICAST_ADDRESS.parse().unwrap(),
+            &options.into(),
+        )?;
+
+        let mut responses: Vec<SingleResponse> = Vec::new();
+        for raw_response in raw_responses {
+            responses.push(raw_response.try_into()?);
+        }
+        Ok(responses)
+    } else {
+        Err(Error::Unsupported)
+    }
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -129,8 +184,51 @@ impl Default for SearchOptions {
             search_target: SearchTarget::RootDevices,
             max_wait_time: 2,
             user_agent: None,
-            minimum_refresh: 0,
+            control_point: None,
         }
+    }
+}
+impl SearchOptions {
+    pub fn new(spec_version: SpecVersion) -> Self {
+        let mut new = Self::default();
+        new.spec_version = spec_version;
+        new
+    }
+
+    pub fn validate(&self) -> Result<(), Error> {
+        lazy_static! {
+            static ref RE: Regex = Regex::new(r"^$").unwrap();
+        }
+        if self.max_wait_time < 1 || self.max_wait_time > 120 {
+            error!(
+                "max_wait_time must be between 1..120 ({})",
+                self.max_wait_time
+            );
+            return Err(Error::MessageFormat(MessageErrorKind::InvalidFieldValue));
+        }
+        if self.spec_version >= SpecVersion::V11 {
+            if let Some(user_agent) = &self.user_agent {
+                if !RE.is_match(user_agent) {
+                    error!(
+                        "user_agent needs to match 'ProductName/Version' ({})",
+                        user_agent
+                    );
+                    return Err(Error::MessageFormat(MessageErrorKind::InvalidFieldValue));
+                }
+            }
+        }
+        if self.spec_version >= SpecVersion::V20 {
+            if self.control_point.is_none() {
+                error!("control_point required");
+                return Err(Error::MessageFormat(MessageErrorKind::InvalidFieldValue));
+            } else if let Some(control_point) = &self.control_point {
+                if control_point.friendly_name.is_empty() {
+                    error!("control_point.friendly_name required");
+                    return Err(Error::MessageFormat(MessageErrorKind::InvalidFieldValue));
+                }
+            }
+        }
+        Ok(())
     }
 }
 
