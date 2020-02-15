@@ -83,7 +83,10 @@ fn decode_status_line(line: String) -> Result<ResponseStatus, Error> {
     }
     match RE.captures(&line) {
         None => {
-            error!("could not decode status line '{}'", line);
+            error!(
+                "decode_status_line - could not decode status line '{}'",
+                line
+            );
             Err(Error::MessageFormat(
                 MessageErrorKind::InvalidResponseStatus,
             ))
@@ -122,7 +125,7 @@ fn decode_header(line: String) -> Result<(String, String), Error> {
     }
     match RE.captures(&line) {
         None => {
-            error!("could not decode header '{}'", line);
+            error!("decode_header - could not decode header '{}'", line);
             Err(Error::MessageFormat(MessageErrorKind::InvalidHeaderFormat))
         }
         Some(captured) => Ok((

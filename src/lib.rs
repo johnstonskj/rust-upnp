@@ -1,17 +1,45 @@
 /*!
-
-_UPnP Device Architecture_ (UDA).
-
-# Supported Components
-
-* _Simple Service Discovery Protocol_ (SSDP)
-* _Service Control Protocol Description_ (SCPD)
-* _General Event Notification Architecture_ (GENA)
-* _Simple Object Access Protocol_ (SOAP)
-
-# More Information
-
-* [UPnP Device Architecture 1.0 ](http://www.upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v1.0.pdf)
+*
+* This crate implements the communication components of the _UPnP Device Architecture_ (UDA),
+* specifically the search and notification functions of the _Simple Service Discovery Protocol_
+* (SSDP). It also provides support for device description elements from the _Service Control
+* Protocol Description_ (SCPD), superceded by _General Event Notification Architecture_ (GENA).
+*
+* The UDA covers the search for devices by a control point (client) as well as how devices respond
+* with, and proactively advertise, capabilities. There are currently 3 versions of the UDA
+* specification, v[1.0](http://www.upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v1.0.pdf),
+* v[1.1](http://www.upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v1.1.pdf) (also standardized as
+* ISO/IEC 29341-1-1), and v[2.0](http://www.upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v2.0.pdf).
+*
+* For more information see the specifications and other documents at [Open Connectivity
+* Foundation](https://openconnectivity.org/developer/specifications/upnp-resources/upnp/).
+*
+* The main interface is the [`ssdp`](ssdp/index.html) module.
+*
+* # Example
+*
+* The following example issues a single v1.0 multicast search and collects and returns a set of
+* device responses.
+*
+* ```rust,no_run
+* use upnp::SpecVersion;
+* use upnp::ssdp::search::*;
+*
+* let mut options = Options::new(SpecVersion::V10);
+* options.search_target = SearchTarget::RootDevices;
+*
+* match search_once(options) {
+*     Ok(responses) => {
+*         println!("search returned {} results.", responses.len());
+*         for (index, response) in responses.iter().enumerate() {
+*             println!("{}: {:#?}", index, response);
+*         }
+*     }
+*     Err(error) => {
+*         println!("search failed with error: {:#?}", error);
+*     }
+* }
+* ```
 */
 
 #![warn(
@@ -25,7 +53,7 @@ _UPnP Device Architecture_ (UDA).
 extern crate lazy_static;
 
 #[macro_use]
-extern crate tracing;
+extern crate log;
 
 use std::fmt::{Display, Error as FmtError, Formatter};
 use std::io::{Error as IOError, ErrorKind as IOErrorKind};
@@ -35,29 +63,61 @@ use std::str::{FromStr, Utf8Error};
 // Public Types
 // ------------------------------------------------------------------------------------------------
 
-#[derive(Clone, Debug)]
+///
+/// This denotes the version of the _UPnP Device Architecture_ (UDA) specification to use
+/// for a given interaction.
+///
+/// This allows the client to constrain the messaging to only the capabilities described by a
+/// specific version.
+///
+#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SpecVersion {
+    /// Denotes messages conforming to UPnP version
+    /// [1.0](http://www.upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v1.0.pdf)
     V10,
+    /// Denotes messages conforming to UPnP version
+    /// [1.1](http://www.upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v1.1.pdf)
     V11,
+    /// Denotes messages conforming to UPnP version
+    /// [2.0](http://www.upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v2.0.pdf)
     V20,
 }
 
+///
+/// This denotes the classes of errors that can arise while processing messages.
+///
 #[derive(Clone, Debug)]
 pub enum MessageErrorKind {
+    /// The response line of a message was invalid in some manner
     InvalidResponseStatus,
+    /// The message could not be decoded from it's byte representation
     InvalidEncoding,
+    /// The embedded version was incorrectly formatted
     InvalidVersion,
+    /// The version in a message did not match the supported version
     VersionMismatch,
+    /// A message header was incorrectly formatted
     InvalidHeaderFormat,
+    /// A required field was either missing or empty
     MissingRequiredField,
+    /// The field value did not match the expected type
     FieldTypeMismatch,
+    /// The field value was not valid in the current context
     InvalidFieldValue,
 }
 
+///
+/// This provides a common error type across the stack.
+///
 #[derive(Clone, Debug)]
 pub enum Error {
+    /// Some network error, more details provided by `std::io::Error`.
     NetworkTransport(IOErrorKind),
+    /// Message construction, parsing, or validation error, more details provided by
+    /// `MessageErrorKind`.
     MessageFormat(MessageErrorKind),
+    /// An operation you attempted is not supported.
+    Unsupported,
 }
 
 // ------------------------------------------------------------------------------------------------

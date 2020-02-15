@@ -13,7 +13,10 @@ pub fn check_required(headers: &HashMap<String, String>, required: &[&str]) -> R
     if missing_headers.is_empty() {
         Ok(())
     } else {
-        error!("message missing headers '{:?}'", missing_headers);
+        error!(
+            "check_required - message missing headers '{:?}'",
+            missing_headers
+        );
         Err(Error::MessageFormat(MessageErrorKind::MissingRequiredField))
     }
 }
@@ -26,7 +29,7 @@ where
         Ok(v) => Ok(v),
         Err(_) => {
             error!(
-                "header '{}', value '{}' could not be parsed",
+                "check_parsed_value - header '{}', value '{}' could not be parsed",
                 name, header_value
             );
             Err(Error::MessageFormat(MessageErrorKind::InvalidFieldValue))
@@ -39,7 +42,7 @@ pub fn check_regex(header_value: &String, name: &str, regex: &Regex) -> Result<S
         Some(captured) => Ok(captured.get(0).unwrap().as_str().to_string()),
         None => {
             error!(
-                "header '{}', value '{}' did not match regex",
+                "check_regex - header '{}', value '{}' did not match regex",
                 name, header_value
             );
             Err(Error::MessageFormat(MessageErrorKind::InvalidFieldValue))
@@ -52,7 +55,7 @@ pub fn check_empty(header_value: &String, name: &str) -> Result<(), Error> {
         Ok(())
     } else {
         error!(
-            "header '{}', value '{}' should be empty",
+            "check_empty - header '{}', value '{}' should be empty",
             name, header_value
         );
         Err(Error::MessageFormat(MessageErrorKind::InvalidFieldValue))
@@ -64,7 +67,7 @@ pub fn check_not_empty(header_value: &String, name: &str) -> Result<String, Erro
         Ok(header_value.clone())
     } else {
         error!(
-            "header '{}', value '{}' should not be empty",
+            "check_not_empty - header '{}', value '{}' should not be empty",
             name, header_value
         );
         Err(Error::MessageFormat(MessageErrorKind::InvalidFieldValue))

@@ -1,12 +1,14 @@
 use human_panic::setup_panic;
+use log::LevelFilter;
 use std::str::FromStr;
 use structopt::StructOpt;
-use tracing_subscriber::EnvFilter;
-use tracing_subscriber::FmtSubscriber;
 use upnp::ssdp::search::*;
 
 #[macro_use]
-extern crate tracing;
+extern crate env_logger;
+
+#[macro_use]
+extern crate log;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "upnp")]
@@ -112,29 +114,20 @@ pub fn main() {
 // ------------------------------------------------------------------------------------------------
 
 fn init_tracing(verbosity: i8) {
-    let log_level = match verbosity {
-        0 => "",
-        1 => "error",
-        2 => "warn",
-        3 => "info",
-        4 => "debug",
-        _ => "trace",
-    };
-    let filter = EnvFilter::from_default_env();
-    let filter = if verbosity > 0 {
-        filter.add_directive(
-            format!("{}={}", module_path!(), log_level)
-                .parse()
-                .expect("Error with command-line trace directive"),
+    env_logger::Builder::from_default_env()
+        .filter_module(
+            module_path!(),
+            match verbosity {
+                0 => LevelFilter::Off,
+                1 => LevelFilter::Error,
+                2 => LevelFilter::Warn,
+                3 => LevelFilter::Info,
+                4 => LevelFilter::Debug,
+                _ => LevelFilter::Trace,
+            },
         )
-    } else {
-        filter
-    };
-    let subscriber = FmtSubscriber::builder().with_env_filter(filter).finish();
-
-    tracing::subscriber::set_global_default(subscriber)
-        .expect("Unable to set global default tracing subscriber");
-    info!("Log level set to {}", log_level);
+        .init();
+    info!("Max log filter level set to {:?}", log::max_level());
 }
 
 fn do_search(
@@ -143,11 +136,8 @@ fn do_search(
     domain: Option<String>,
     max_wait_time: Option<u8>,
 ) {
-    let mut options = SearchOptions::default();
-    options.network_interface = match bind_to_interface {
-        None => Some("en0".to_string()),
-        ni @ Some(_) => ni,
-    };
+    let mut options = Options::default();
+    options.network_interface = bind_to_interface;
     if let Some(search_target) = search_target {
         options.search_target = match search_target {
             CLSearchTarget::All => SearchTarget::All,

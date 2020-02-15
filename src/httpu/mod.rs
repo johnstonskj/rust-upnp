@@ -36,8 +36,8 @@ pub struct Options {
 //) -> Result<Response, Error> {
 //}
 
-#[instrument]
 pub fn create_multicast_socket(options: &Options) -> Result<UdpSocket, Error> {
+    debug!("create_multicast_socket - options: {:?}", options);
     let local_address = match local_address_for_interface(&options.network_interface) {
         None => SocketAddr::V4(SocketAddrV4::new(
             Ipv4Addr::new(0, 0, 0, 0),
@@ -45,7 +45,10 @@ pub fn create_multicast_socket(options: &Options) -> Result<UdpSocket, Error> {
         )),
         Some(address) => SocketAddr::new(address, options.local_port),
     };
-    trace!("Binding to local address {:?}", local_address);
+    trace!(
+        "create_multicast_socket - binding to local_address: {:?}",
+        local_address
+    );
     let socket = UdpSocket::bind(local_address)?;
 
     configure_multicast_socket(
@@ -54,8 +57,8 @@ pub fn create_multicast_socket(options: &Options) -> Result<UdpSocket, Error> {
         options.local_network_only,
         options.loop_back_also,
     )?;
-    info!(
-        "Socket {:?}, read_timeout: {:?}, multicast_ttl: {}",
+    trace!(
+        "create_multicast_socket - socket: {:?}, read_timeout: {:?}, multicast_ttl: {}",
         socket,
         socket.read_timeout()?,
         socket.multicast_ttl_v4()?
@@ -64,7 +67,6 @@ pub fn create_multicast_socket(options: &Options) -> Result<UdpSocket, Error> {
     Ok(socket)
 }
 
-#[instrument]
 pub fn multicast(
     message: &Request,
     multicast_address: &SocketAddrV4,
@@ -75,7 +77,6 @@ pub fn multicast(
     multicast_using(message, multicast_address, options, &socket)
 }
 
-#[instrument]
 pub fn multicast_once(
     message: &Request,
     multicast_address: &SocketAddrV4,
@@ -86,7 +87,6 @@ pub fn multicast_once(
     multicast_once_using(message, multicast_address, options, &socket)
 }
 
-#[instrument]
 pub fn multicast_using(
     message: &Request,
     multicast_address: &SocketAddrV4,
@@ -99,18 +99,25 @@ pub fn multicast_using(
 
     loop {
         let mut buf = [0u8; protocol::BUFFER_SIZE];
-        info!("Waiting on discovery responses (recv_from)");
+        trace!(
+            "multicast_using - blocking on recv_from, buffer size {}",
+            protocol::BUFFER_SIZE
+        );
         match socket.recv_from(&mut buf) {
             Ok((received, from)) => {
-                info!("received {} bytes from {:?}", received, from,);
+                trace!(
+                    "multicast_using - received {} bytes from {:?}",
+                    received,
+                    from,
+                );
                 responses.push(Response::try_from(&buf[..received])?);
             }
             Err(e) => {
                 if e.kind() == IOErrorKind::WouldBlock {
-                    info!("socket timed out, no data");
+                    trace!("multicast_using - socket timed out, no data");
                     break;
                 } else {
-                    error!("socket read returned error: {:?}", e);
+                    error!("multicast_using - socket read returned error: {:?}", e);
                     return Err(Error::NetworkTransport(e.kind()));
                 }
             }
@@ -119,7 +126,6 @@ pub fn multicast_using(
     Ok(responses)
 }
 
-#[instrument]
 pub fn multicast_once_using(
     message: &Request,
     multicast_address: &SocketAddrV4,
@@ -170,20 +176,20 @@ fn configure_multicast_socket(
     local_only: bool,
     loop_back: bool,
 ) -> Result<&UdpSocket, Error> {
-    socket.set_nonblocking(false)?;
+    //    socket.set_nonblocking(false)?;
     socket.set_read_timeout(Some(Duration::from_secs(timeout)))?;
-    if socket.local_addr().unwrap().is_ipv4() {
-        trace!(
-            "Setting IPV4 multicast_ttl: {}, loop_back: {}",
-            local_only,
-            loop_back
-        );
-        socket.set_multicast_ttl_v4(if local_only { 1 } else { 10 })?;
-        socket.set_multicast_loop_v4(loop_back)?;
-    } else {
-        trace!("Setting IPV6 loop_back: {}", loop_back);
-        socket.set_multicast_loop_v6(loop_back)?;
-    }
+    //    if socket.local_addr().unwrap().is_ipv4() {
+    //        trace!(
+    //            "Setting IPV4 multicast_ttl: {}, loop_back: {}",
+    //            local_only,
+    //            loop_back
+    //        );
+    //        socket.set_multicast_ttl_v4(if local_only { 1 } else { 10 })?;
+    //        socket.set_multicast_loop_v4(loop_back)?;
+    //    } else {
+    //        trace!("Setting IPV6 loop_back: {}", loop_back);
+    //        socket.set_multicast_loop_v6(loop_back)?;
+    //    }
     Ok(socket)
 }
 
@@ -192,10 +198,9 @@ fn multicast_send_using(
     multicast_address: &SocketAddrV4,
     socket: &UdpSocket,
 ) -> Result<(), Error> {
-    trace!(
-        "multicasting discovery message to address {:?} through interface {:?}",
-        multicast_address,
-        socket.local_addr()
+    debug!(
+        "multicast_send_using - message: {:?}, address: {:?}, socket: {:?}",
+        message, multicast_address, socket
     );
 
     let message: String = message.into();

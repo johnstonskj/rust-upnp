@@ -13,7 +13,7 @@ pub fn make(spec_version: &SpecVersion, product: &Option<String>) -> String {
     CAPTURE.call_once(|| unsafe {
         PRODUCT = format!("Rust-{}/{}", UA_NAME, UA_VERSION);
         OP_SYS = format!("{}/{}", os::system_name(), os::system_version());
-        trace!("Default User-Agent: {} UPnP/? {}", OP_SYS, PRODUCT);
+        trace!("make - default User-Agent: {} UPnP/? {}", OP_SYS, PRODUCT);
     });
 
     format!(
