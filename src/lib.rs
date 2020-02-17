@@ -126,6 +126,12 @@ pub const UPNP_STRING: &str = "UPnP";
 // Implementations
 // ------------------------------------------------------------------------------------------------
 
+impl Default for SpecVersion {
+    fn default() -> Self {
+        SpecVersion::V10
+    }
+}
+
 impl Display for SpecVersion {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), FmtError> {
         write!(

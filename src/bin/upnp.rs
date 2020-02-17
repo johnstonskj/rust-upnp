@@ -11,6 +11,10 @@ extern crate env_logger;
 #[macro_use]
 extern crate log;
 
+// ------------------------------------------------------------------------------------------------
+// Public Types
+// ------------------------------------------------------------------------------------------------
+
 #[derive(Debug, StructOpt)]
 #[structopt(name = "upnp")]
 struct CommandLine {
@@ -20,6 +24,9 @@ struct CommandLine {
 
     #[structopt(long, short)]
     interface: Option<String>,
+
+    #[structopt(long, short = "V")]
+    spec_version: Option<String>,
 
     #[structopt(subcommand)]
     cmd: Command,
@@ -55,6 +62,10 @@ pub enum CommandLineError {
     UnexpectedParameter(String),
     InvalidParameterValue(String, String),
 }
+
+// ------------------------------------------------------------------------------------------------
+// Implementations
+// ------------------------------------------------------------------------------------------------
 
 impl FromStr for CLSearchTarget {
     type Err = CommandLineError;
@@ -105,7 +116,13 @@ pub fn main() {
             search_target,
             domain,
             max_wait,
-        } => do_search(args.interface, search_target, domain, max_wait),
+        } => do_search(
+            parse_version(args.spec_version),
+            args.interface,
+            search_target,
+            domain,
+            max_wait,
+        ),
         Command::Listen => do_listen(),
     }
 }
@@ -131,13 +148,30 @@ fn init_tracing(verbosity: i8) {
     info!("Max log filter level set to {:?}", log::max_level());
 }
 
+fn parse_version(version: Option<String>) -> SpecVersion {
+    if let Some(s) = version {
+        if s == "1.0".to_string() {
+            SpecVersion::V10
+        } else if s == "1.1".to_string() {
+            SpecVersion::V11
+        } else if s == "2.0".to_string() {
+            SpecVersion::V20
+        } else {
+            SpecVersion::default()
+        }
+    } else {
+        SpecVersion::default()
+    }
+}
+
 fn do_search(
+    spec_version: SpecVersion,
     bind_to_interface: Option<String>,
     search_target: Option<CLSearchTarget>,
     domain: Option<String>,
     max_wait_time: Option<u8>,
 ) {
-    let mut options = Options::default_for(SpecVersion::V10);
+    let mut options = Options::default_for(spec_version);
     options.network_interface = bind_to_interface;
     if let Some(search_target) = search_target {
         options.search_target = match search_target {
