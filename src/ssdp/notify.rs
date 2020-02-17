@@ -3,6 +3,7 @@
 use crate::httpu::{multicast_once, Options as MulticastOptions, RequestBuilder};
 use crate::ssdp::search::SearchTarget;
 use crate::ssdp::{protocol, ProductVersion};
+use crate::utils::uri::{URI, URL};
 use crate::utils::user_agent;
 use crate::{Error, SpecVersion};
 
@@ -12,12 +13,12 @@ use crate::{Error, SpecVersion};
 
 #[derive(Clone, Debug)]
 pub struct Device {
-    service_name: String,
-    location: String,
-    boot_id: u64,
-    config_id: u64,
-    search_port: Option<u16>,
-    secure_location: Option<String>,
+    pub service_name: URI,
+    pub location: URL,
+    pub boot_id: u64,
+    pub config_id: u64,
+    pub search_port: Option<u16>,
+    pub secure_location: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -46,14 +47,14 @@ pub fn device_available(
             protocol::HEAD_CACHE_CONTROL,
             &format!("max-age={}", options.max_age),
         )
-        .add_header(protocol::HEAD_LOCATION, &device.location)
+        .add_header(protocol::HEAD_LOCATION, &device.location.to_string())
         .add_header(protocol::HEAD_NT, &search_target.to_string())
         .add_header(protocol::HEAD_NTS, protocol::NTS_ALIVE)
         .add_header(
             protocol::HEAD_SERVER,
             &user_agent::make(&options.spec_version, &options.product_and_version),
         )
-        .add_header(protocol::HEAD_USN, &device.service_name);
+        .add_header(protocol::HEAD_USN, &device.service_name.to_string());
 
     if options.spec_version >= SpecVersion::V11 {
         message_builder
@@ -93,10 +94,10 @@ pub fn device_update(
     let mut message_builder = RequestBuilder::new(protocol::METHOD_NOTIFY);
     message_builder
         .add_header(protocol::HEAD_HOST, protocol::MULTICAST_ADDRESS)
-        .add_header(protocol::HEAD_LOCATION, &device.location)
+        .add_header(protocol::HEAD_LOCATION, &device.location.to_string())
         .add_header(protocol::HEAD_NT, &search_target.to_string())
         .add_header(protocol::HEAD_NTS, protocol::NTS_UPDATE)
-        .add_header(protocol::HEAD_USN, &device.service_name)
+        .add_header(protocol::HEAD_USN, &device.service_name.to_string())
         .add_header(protocol::HEAD_BOOTID, &device.boot_id.to_string())
         .add_header(protocol::HEAD_NEXT_BOOTID, &next_boot_id.to_string())
         .add_header(protocol::HEAD_CONFIGID, &device.config_id.to_string());
@@ -132,7 +133,7 @@ pub fn device_unavailable(
         .add_header(protocol::HEAD_HOST, protocol::MULTICAST_ADDRESS)
         .add_header(protocol::HEAD_NT, &search_target.to_string())
         .add_header(protocol::HEAD_NTS, protocol::NTS_BYE)
-        .add_header(protocol::HEAD_USN, &device.service_name);
+        .add_header(protocol::HEAD_USN, &device.service_name.to_string());
 
     if options.spec_version >= SpecVersion::V11 {
         message_builder
