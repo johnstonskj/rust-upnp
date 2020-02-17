@@ -162,11 +162,11 @@ pub fn search_once(options: Options) -> Result<Vec<Response>, Error> {
         match &options.control_point {
             Some(cp) => {
                 message_builder.add_header(protocol::HEAD_CP_FN, &cp.friendly_name);
+                if let Some(uuid) = &cp.uuid {
+                    message_builder.add_header(protocol::HEAD_CP_UUID, &uuid);
+                }
                 if let Some(port) = cp.port {
                     message_builder.add_header(protocol::HEAD_TCP_PORT, &port.to_string());
-                }
-                if let Some(uuid) = &cp.uuid {
-                    message_builder.add_header(protocol::HEAD_TCP_PORT, &uuid);
                 }
             }
             None => {
@@ -382,8 +382,6 @@ const REQUIRED_HEADERS_V10: [&str; 7] = [
     protocol::HEAD_ST,
     protocol::HEAD_USN,
 ];
-
-const REQUIRED_HEADERS_V20: [&str; 1] = [protocol::HEAD_BOOTID];
 
 impl TryFrom<MulticastResponse> for Response {
     type Error = Error;

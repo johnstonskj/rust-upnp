@@ -81,3 +81,5 @@ pub const HEAD_USN: &str = "USN";
 pub const NTS_ALIVE: &str = "ssdp:alive";
 
 pub const NTS_BYE: &str = "ssdp:byebye";
+
+pub const NTS_UPDATE: &str = "ssdp:update";
