@@ -36,7 +36,10 @@ pub struct Options {
 //) -> Result<Response, Error> {
 //}
 
-pub fn create_multicast_socket(options: &Options) -> Result<UdpSocket, Error> {
+pub fn create_multicast_socket(
+    multicast_address: &SocketAddrV4,
+    options: &Options,
+) -> Result<UdpSocket, Error> {
     debug!("create_multicast_socket - options: {:?}", options);
     let local_address = match local_address_for_interface(&options.network_interface) {
         None => SocketAddr::V4(SocketAddrV4::new(
@@ -51,12 +54,20 @@ pub fn create_multicast_socket(options: &Options) -> Result<UdpSocket, Error> {
     );
     let socket = UdpSocket::bind(local_address)?;
 
-    configure_multicast_socket(
-        &socket,
-        options.timeout,
-        options.local_network_only,
-        options.loop_back_also,
-    )?;
+    trace!("create_multicast_socket - setting socket options");
+    socket.set_nonblocking(false)?;
+    socket.set_read_timeout(Some(Duration::from_secs(options.timeout)))?;
+    match local_address {
+        SocketAddr::V4(socket_address) => {
+            socket.join_multicast_v4(multicast_address.ip(), &socket_address.ip())?;
+            socket.set_multicast_ttl_v4(if options.local_network_only { 1 } else { 10 })?;
+            socket.set_multicast_loop_v4(options.loop_back_also)?;
+        }
+        SocketAddr::V6(_) => {
+            socket.set_multicast_loop_v6(options.loop_back_also)?;
+        }
+    }
+
     trace!(
         "create_multicast_socket - socket: {:?}, read_timeout: {:?}, multicast_ttl: {}",
         socket,
@@ -72,7 +83,7 @@ pub fn multicast(
     multicast_address: &SocketAddrV4,
     options: &Options,
 ) -> Result<Vec<Response>, Error> {
-    let socket = create_multicast_socket(options)?;
+    let socket = create_multicast_socket(multicast_address, options)?;
 
     multicast_using(message, multicast_address, options, &socket)
 }
@@ -82,7 +93,7 @@ pub fn multicast_once(
     multicast_address: &SocketAddrV4,
     options: &Options,
 ) -> Result<(), Error> {
-    let socket = create_multicast_socket(options)?;
+    let socket = create_multicast_socket(multicast_address, options)?;
 
     multicast_once_using(message, multicast_address, options, &socket)
 }
@@ -170,39 +181,12 @@ pub fn local_address_for_interface(network_interface: &Option<String>) -> Option
     }
 }
 
-fn configure_multicast_socket(
-    socket: &UdpSocket,
-    timeout: u64,
-    local_only: bool,
-    loop_back: bool,
-) -> Result<&UdpSocket, Error> {
-    //    socket.set_nonblocking(false)?;
-    socket.set_read_timeout(Some(Duration::from_secs(timeout)))?;
-    //    if socket.local_addr().unwrap().is_ipv4() {
-    //        trace!(
-    //            "Setting IPV4 multicast_ttl: {}, loop_back: {}",
-    //            local_only,
-    //            loop_back
-    //        );
-    //        socket.set_multicast_ttl_v4(if local_only { 1 } else { 10 })?;
-    //        socket.set_multicast_loop_v4(loop_back)?;
-    //    } else {
-    //        trace!("Setting IPV6 loop_back: {}", loop_back);
-    //        socket.set_multicast_loop_v6(loop_back)?;
-    //    }
-    Ok(socket)
-}
-
+#[inline]
 fn multicast_send_using(
     message: &Request,
     multicast_address: &SocketAddrV4,
     socket: &UdpSocket,
 ) -> Result<(), Error> {
-    debug!(
-        "multicast_send_using - message: {:?}, address: {:?}, socket: {:?}",
-        message, multicast_address, socket
-    );
-
     let message: String = message.into();
     socket.send_to(message.as_bytes(), multicast_address)?;
     Ok(())

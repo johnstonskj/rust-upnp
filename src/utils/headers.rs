@@ -21,7 +21,7 @@ pub fn check_required(headers: &HashMap<String, String>, required: &[&str]) -> R
     }
 }
 
-pub fn check_parsed_value<T>(header_value: &String, name: &str) -> Result<T, Error>
+pub fn check_parsed_value<T>(header_value: &str, name: &str) -> Result<T, Error>
 where
     T: FromStr,
 {
@@ -37,9 +37,9 @@ where
     }
 }
 
-pub fn check_regex(header_value: &String, name: &str, regex: &Regex) -> Result<String, Error> {
+pub fn check_regex(header_value: &str, name: &str, regex: &Regex) -> Result<String, Error> {
     match regex.captures(&header_value) {
-        Some(captured) => Ok(captured.get(0).unwrap().as_str().to_string()),
+        Some(captured) => Ok(captured.get(1).unwrap().as_str().to_string()),
         None => {
             error!(
                 "check_regex - header '{}', value '{}' did not match regex",
@@ -50,7 +50,7 @@ pub fn check_regex(header_value: &String, name: &str, regex: &Regex) -> Result<S
     }
 }
 
-pub fn check_empty(header_value: &String, name: &str) -> Result<(), Error> {
+pub fn check_empty(header_value: &str, name: &str) -> Result<(), Error> {
     if header_value.trim().is_empty() {
         Ok(())
     } else {
@@ -62,9 +62,9 @@ pub fn check_empty(header_value: &String, name: &str) -> Result<(), Error> {
     }
 }
 
-pub fn check_not_empty(header_value: &String, name: &str) -> Result<String, Error> {
+pub fn check_not_empty(header_value: &str, name: &str) -> Result<String, Error> {
     if !header_value.trim().is_empty() {
-        Ok(header_value.clone())
+        Ok(header_value.to_string())
     } else {
         error!(
             "check_not_empty - header '{}', value '{}' should not be empty",

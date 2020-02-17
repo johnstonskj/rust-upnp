@@ -13,14 +13,17 @@ use crate::httpu::{
     multicast, Options as MulticastOptions, RequestBuilder, Response as MulticastResponse,
 };
 use crate::ssdp::{protocol, ControlPoint};
+use crate::utils::uri::{URI, URL};
 use crate::utils::{headers, user_agent};
 use crate::{Error, MessageErrorKind, SpecVersion};
 use regex::Regex;
+use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::{Display, Error as FmtError, Formatter};
 use std::net::SocketAddrV4;
 use std::str::FromStr;
+use std::time::{Duration, SystemTime};
 
 // ------------------------------------------------------------------------------------------------
 // Public Types
@@ -86,27 +89,42 @@ pub struct Options {
 #[derive(Clone, Debug)]
 struct CachedResponse {
     response: Response,
-    expiration: u64,
+    expiration: SystemTime,
 }
 
 #[derive(Clone, Debug)]
 pub struct ResponseCache {
     options: Options,
-    minimum_refresh: u16,
-    last_updated: u64,
+    minimum_refresh: Duration,
+    last_updated: SystemTime,
     responses: Vec<CachedResponse>,
 }
 
 #[derive(Clone, Debug)]
+pub struct ServerVersion {
+    pub name: String,
+    pub version: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct VersionInfo {
+    pub operating_system: ServerVersion,
+    pub upnp: ServerVersion,
+    pub product: ServerVersion,
+}
+
+#[derive(Clone, Debug)]
 pub struct Response {
-    max_age: u64,
-    date: String,
-    server: String,
-    location: String,
-    search_target: SearchTarget,
-    service_name: String,
-    boot_id: u64,
-    other_headers: HashMap<String, String>,
+    pub max_age: Duration,
+    pub date: String,
+    pub versions: VersionInfo,
+    pub location: URL,
+    pub search_target: SearchTarget,
+    pub service_name: URI,
+    pub boot_id: u64,
+    pub config_id: Option<u64>,
+    pub search_port: Option<u16>,
+    pub other_headers: HashMap<String, String>,
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -251,6 +269,10 @@ impl FromStr for SearchTarget {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        lazy_static! {
+            static ref DOMAIN_URN: Regex =
+                Regex::new(r"^urn:([^:]+):(device|service):(.+)$").unwrap();
+        }
         if s == "ssdp::all" {
             Ok(SearchTarget::All)
         } else if s == "upnp:rootdevice" {
@@ -261,12 +283,34 @@ impl FromStr for SearchTarget {
             Ok(SearchTarget::DeviceType(s[28..].to_string()))
         } else if s.starts_with("urn:schemas-upnp-org:service:") {
             Ok(SearchTarget::ServiceType(s[29..].to_string()))
-        // TODO: domain devices and services
+        } else if s.starts_with("urn:") {
+            match DOMAIN_URN.captures(s) {
+                Some(captures) => {
+                    if captures.get(2).unwrap().as_str() == "device" {
+                        Ok(SearchTarget::DomainDeviceType(
+                            captures.get(1).unwrap().as_str().to_string(),
+                            captures.get(3).unwrap().as_str().to_string(),
+                        ))
+                    } else {
+                        Ok(SearchTarget::DomainServiceType(
+                            captures.get(1).unwrap().as_str().to_string(),
+                            captures.get(3).unwrap().as_str().to_string(),
+                        ))
+                    }
+                }
+                None => {
+                    error!("Could not parse URN '{}'", s);
+                    Err(())
+                }
+            }
         } else {
+            error!("Could not parse '{}' as a search target", s);
             Err(())
         }
     }
 }
+
+// ------------------------------------------------------------------------------------------------
 
 impl Default for Options {
     fn default() -> Self {
@@ -296,7 +340,7 @@ impl Options {
 
     pub fn validate(&self) -> Result<(), Error> {
         lazy_static! {
-            static ref RE: Regex = Regex::new(r"^$").unwrap();
+            static ref UA_PART: Regex = Regex::new(r"^[^/]+/[\d\.]+$").unwrap();
         }
         if self.max_wait_time < 1 || self.max_wait_time > 120 {
             error!(
@@ -307,7 +351,7 @@ impl Options {
         }
         if self.spec_version >= SpecVersion::V11 {
             if let Some(user_agent) = &self.product_and_version {
-                if !RE.is_match(user_agent) {
+                if !UA_PART.is_match(user_agent) {
                     error!(
                         "validate - user_agent needs to match 'ProductName/Version' ({})",
                         user_agent
@@ -340,79 +384,147 @@ impl From<Options> for MulticastOptions {
     }
 }
 
-const REQUIRED_HEADERS: [&str; 7] = [
-    protocol::HEAD_BOOTID,
+// ------------------------------------------------------------------------------------------------
+
+const REQUIRED_HEADERS_V10: [&str; 7] = [
     protocol::HEAD_CACHE_CONTROL,
     protocol::HEAD_DATE,
     protocol::HEAD_EXT,
     protocol::HEAD_LOCATION,
+    protocol::HEAD_SERVER,
     protocol::HEAD_ST,
     protocol::HEAD_USN,
 ];
+
+const REQUIRED_HEADERS_V20: [&str; 1] = [protocol::HEAD_BOOTID];
 
 impl TryFrom<MulticastResponse> for Response {
     type Error = Error;
 
     fn try_from(response: MulticastResponse) -> Result<Self, Self::Error> {
-        headers::check_required(&response.headers, &REQUIRED_HEADERS)?;
+        lazy_static! {
+            static ref UA_ALL: Regex =
+                Regex::new(r"^([^/]+)/([\d\.]+),?[ ]+([^/]+)/([\d\.]+),?[ ]+([^/]+)/([\d\.]+)$")
+                    .unwrap();
+        }
+        headers::check_required(&response.headers, &REQUIRED_HEADERS_V10)?;
         headers::check_empty(
             response.headers.get(protocol::HEAD_EXT).unwrap(),
             protocol::HEAD_EXT,
         )?;
 
+        let server = response.headers.get(protocol::HEAD_SERVER).unwrap();
+        let versions = match UA_ALL.captures(response.headers.get(protocol::HEAD_SERVER).unwrap()) {
+            Some(captures) => VersionInfo {
+                operating_system: ServerVersion {
+                    name: captures.get(1).unwrap().as_str().to_string(),
+                    version: captures.get(2).unwrap().as_str().to_string(),
+                },
+                upnp: ServerVersion {
+                    name: captures.get(3).unwrap().as_str().to_string(),
+                    version: captures.get(4).unwrap().as_str().to_string(),
+                },
+                product: ServerVersion {
+                    name: captures.get(5).unwrap().as_str().to_string(),
+                    version: captures.get(6).unwrap().as_str().to_string(),
+                },
+            },
+            None => {
+                error!("invalid value for server header '{}", server);
+                return Err(Error::MessageFormat(MessageErrorKind::InvalidFieldValue));
+            }
+        };
+
+        let max_age = headers::check_parsed_value::<u64>(
+            &headers::check_regex(
+                response.headers.get(protocol::HEAD_CACHE_CONTROL).unwrap(),
+                protocol::HEAD_CACHE_CONTROL,
+                &Regex::new(r"max\-age[ ]*=[ ]*(\d+)").unwrap(),
+            )?,
+            protocol::HEAD_CACHE_CONTROL,
+        )?;
+
+        let date = headers::check_not_empty(
+            response.headers.get(protocol::HEAD_DATE).unwrap(),
+            protocol::HEAD_DATE,
+        )?;
+
+        let location = headers::check_not_empty(
+            response.headers.get(protocol::HEAD_LOCATION).unwrap(),
+            protocol::HEAD_LOCATION,
+        )?;
+
+        let service_name = headers::check_not_empty(
+            response.headers.get(protocol::HEAD_USN).unwrap(),
+            protocol::HEAD_USN,
+        )?;
+
+        let search_target = headers::check_not_empty(
+            response.headers.get(protocol::HEAD_ST).unwrap(),
+            protocol::HEAD_ST,
+        )?;
+
+        let mut boot_id = 0u64;
+        let mut config_id: Option<u64> = None;
+        let mut search_port: Option<u16> = None;
+        if versions.upnp.version == SpecVersion::V20.to_string() {
+            boot_id = headers::check_parsed_value::<u64>(
+                response
+                    .headers
+                    .get(protocol::HEAD_BOOTID)
+                    .unwrap_or(&"0".to_string()),
+                protocol::HEAD_BOOTID,
+            )?;
+            if let Some(s) = response.headers.get(protocol::HEAD_CONFIGID) {
+                config_id = s.parse::<u64>().ok();
+            }
+            if let Some(s) = response.headers.get(protocol::HEAD_SEARCH_PORT) {
+                search_port = s.parse::<u16>().ok();
+            }
+        }
+
         let remaining_headers: HashMap<String, String> = response
             .headers
             .clone()
             .iter()
-            .filter(|(k, _)| REQUIRED_HEADERS.contains(&k.as_str()))
+            .filter(|(k, _)| !REQUIRED_HEADERS_V10.contains(&k.as_str()))
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
 
         Ok(Response {
-            boot_id: headers::check_parsed_value::<u64>(
-                response.headers.get(protocol::HEAD_BOOTID).unwrap(),
-                protocol::HEAD_BOOTID,
-            )?,
-            max_age: headers::check_parsed_value::<u64>(
-                &headers::check_regex(
-                    response.headers.get(protocol::HEAD_CACHE_CONTROL).unwrap(),
-                    protocol::HEAD_CACHE_CONTROL,
-                    &Regex::new(r"max-age[ ]*=[ ]*(\d+)").unwrap(),
-                )?,
-                protocol::HEAD_CACHE_CONTROL,
-            )?,
-            date: headers::check_not_empty(
-                response.headers.get(protocol::HEAD_DATE).unwrap(),
-                protocol::HEAD_DATE,
-            )?,
-            server: headers::check_not_empty(
-                response.headers.get(protocol::HEAD_SERVER).unwrap(),
-                protocol::HEAD_SERVER,
-            )?,
-            location: headers::check_not_empty(
-                response.headers.get(protocol::HEAD_LOCATION).unwrap(),
-                protocol::HEAD_LOCATION,
-            )?,
-            search_target: SearchTarget::All,
-            service_name: headers::check_not_empty(
-                response.headers.get(protocol::HEAD_USN).unwrap(),
-                protocol::HEAD_USN,
-            )?,
+            max_age: Duration::from_secs(max_age),
+            date,
+            versions,
+            location: URI::from_str(&location)
+                .map_err(|_| Error::MessageFormat(MessageErrorKind::InvalidFieldValue))?,
+            search_target: SearchTarget::from_str(&search_target)
+                .map_err(|_| Error::MessageFormat(MessageErrorKind::InvalidFieldValue))?,
+            service_name: URI::from_str(&service_name)
+                .map_err(|_| Error::MessageFormat(MessageErrorKind::InvalidFieldValue))?,
+            boot_id,
+            config_id,
+            search_port,
             other_headers: remaining_headers,
         })
     }
 }
+
+// ------------------------------------------------------------------------------------------------
 
 impl ResponseCache {
     pub fn refresh(&mut self) -> Self {
         self.to_owned()
     }
 
-    pub fn last_updated(self) -> u64 {
+    pub fn last_updated(self) -> SystemTime {
         self.last_updated
     }
 
-    pub fn responses(&self) -> Vec<Response> {
-        Vec::new()
+    pub fn responses(&self) -> Vec<&Response> {
+        self.responses.iter().map(|r| r.response.borrow()).collect()
     }
 }
+
+// ------------------------------------------------------------------------------------------------
+// Private Functions
+// ------------------------------------------------------------------------------------------------
