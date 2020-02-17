@@ -1,7 +1,7 @@
 /*!
 */
 use crate::httpu::{multicast_once, Options as MulticastOptions, RequestBuilder};
-use crate::ssdp::protocol;
+use crate::ssdp::{protocol, ProductVersion};
 use crate::utils::user_agent;
 use crate::{Error, SpecVersion};
 
@@ -19,7 +19,7 @@ pub struct Options {
     pub spec_version: SpecVersion,
     pub network_interface: Option<String>,
     pub max_age: Option<u16>,
-    pub user_agent: Option<String>,
+    pub product_and_version: Option<ProductVersion>,
 }
 
 pub fn device_available(_device: &mut Device, _options: Options) -> Result<(), Error> {
@@ -38,7 +38,7 @@ pub fn device_unavailable(device: &mut Device, options: Options) -> Result<(), E
         .add_header(protocol::HEAD_USN, &device.service_name)
         .add_header(
             protocol::HEAD_USER_AGENT,
-            &user_agent::make(&options.spec_version, &options.user_agent),
+            &user_agent::make(&options.spec_version, &options.product_and_version),
         );
 
     multicast_once(

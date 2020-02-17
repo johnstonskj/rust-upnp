@@ -12,7 +12,7 @@ with any (non-expired) previously cached responses.
 use crate::httpu::{
     multicast, Options as MulticastOptions, RequestBuilder, Response as MulticastResponse,
 };
-use crate::ssdp::{protocol, ControlPoint};
+use crate::ssdp::{protocol, ControlPoint, ProductVersion, ProductVersions};
 use crate::utils::uri::{URI, URL};
 use crate::utils::{headers, user_agent};
 use crate::{Error, MessageErrorKind, SpecVersion};
@@ -79,7 +79,7 @@ pub struct Options {
     /// If specified this is to be the `ProduceName/Version` component of the user agent string
     /// the client will generate as part of sent messages. If not specified a default value based
     /// on the name and version of this crate will be used. Default: `None`.
-    pub product_and_version: Option<String>,
+    pub product_and_version: Option<ProductVersion>,
     /// If specified this will be used to add certain control point values in the sent messages.
     /// This value is **only** used by the 2.0 specification where it is required, otherwise it
     /// will be ignores. Default: `None`.
@@ -101,23 +101,10 @@ pub struct ResponseCache {
 }
 
 #[derive(Clone, Debug)]
-pub struct ServerVersion {
-    pub name: String,
-    pub version: String,
-}
-
-#[derive(Clone, Debug)]
-pub struct VersionInfo {
-    pub operating_system: ServerVersion,
-    pub upnp: ServerVersion,
-    pub product: ServerVersion,
-}
-
-#[derive(Clone, Debug)]
 pub struct Response {
     pub max_age: Duration,
     pub date: String,
-    pub versions: VersionInfo,
+    pub versions: ProductVersions,
     pub location: URL,
     pub search_target: SearchTarget,
     pub service_name: URI,
@@ -340,7 +327,7 @@ impl Options {
 
     pub fn validate(&self) -> Result<(), Error> {
         lazy_static! {
-            static ref UA_PART: Regex = Regex::new(r"^[^/]+/[\d\.]+$").unwrap();
+            static ref UA_VERSION: Regex = Regex::new(r"^[\d\.]+$").unwrap();
         }
         if self.max_wait_time < 1 || self.max_wait_time > 120 {
             error!(
@@ -351,9 +338,9 @@ impl Options {
         }
         if self.spec_version >= SpecVersion::V11 {
             if let Some(user_agent) = &self.product_and_version {
-                if !UA_PART.is_match(user_agent) {
+                if user_agent.name.contains('/') || !UA_VERSION.is_match(&user_agent.version) {
                     error!(
-                        "validate - user_agent needs to match 'ProductName/Version' ({})",
+                        "validate - user_agent needs to match 'ProductName/Version' ({:?})",
                         user_agent
                     );
                     return Err(Error::MessageFormat(MessageErrorKind::InvalidFieldValue));
@@ -415,16 +402,16 @@ impl TryFrom<MulticastResponse> for Response {
 
         let server = response.headers.get(protocol::HEAD_SERVER).unwrap();
         let versions = match UA_ALL.captures(response.headers.get(protocol::HEAD_SERVER).unwrap()) {
-            Some(captures) => VersionInfo {
-                operating_system: ServerVersion {
+            Some(captures) => ProductVersions {
+                operating_system: ProductVersion {
                     name: captures.get(1).unwrap().as_str().to_string(),
                     version: captures.get(2).unwrap().as_str().to_string(),
                 },
-                upnp: ServerVersion {
+                upnp: ProductVersion {
                     name: captures.get(3).unwrap().as_str().to_string(),
                     version: captures.get(4).unwrap().as_str().to_string(),
                 },
-                product: ServerVersion {
+                product: ProductVersion {
                     name: captures.get(5).unwrap().as_str().to_string(),
                     version: captures.get(6).unwrap().as_str().to_string(),
                 },
