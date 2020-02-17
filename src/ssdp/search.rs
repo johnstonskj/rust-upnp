@@ -72,6 +72,8 @@ pub struct Options {
     /// A specific network interface to bind to; if specified the default address for the interface
     /// will be used, else the address `0.0.0.0:0` will be used. Default: `None`.
     pub network_interface: Option<String>,
+    /// The IP packet TTL value.
+    pub packet_ttl: u32,
     /// The maximum wait time for devices to use in responding. This will also be used as the read
     /// timeout on the underlying socket. This value **must** be between `0` and `120`;
     /// default: `2`.
@@ -299,28 +301,25 @@ impl FromStr for SearchTarget {
 
 // ------------------------------------------------------------------------------------------------
 
-impl Default for Options {
-    fn default() -> Self {
+impl Options {
+    pub fn default_for(spec_version: SpecVersion) -> Self {
         Options {
-            spec_version: SpecVersion::V10,
+            spec_version: spec_version.clone(),
             network_interface: None,
             search_target: SearchTarget::RootDevices,
+            packet_ttl: if spec_version == SpecVersion::V10 {
+                4
+            } else {
+                2
+            },
             max_wait_time: 2,
             product_and_version: None,
             control_point: None,
         }
     }
-}
-impl Options {
-    pub fn new(spec_version: SpecVersion) -> Self {
-        let mut new = Self::default();
-        new.spec_version = spec_version;
-        new
-    }
 
     pub fn for_control_point(control_point: ControlPoint) -> Self {
-        let mut new = Self::default();
-        new.spec_version = SpecVersion::V20;
+        let mut new = Self::default_for(SpecVersion::V20);
         new.control_point = Some(control_point.clone());
         new
     }
@@ -366,7 +365,8 @@ impl From<Options> for MulticastOptions {
     fn from(options: Options) -> Self {
         let mut multicast_options = MulticastOptions::default();
         multicast_options.network_interface = options.network_interface;
-        multicast_options.timeout = options.max_wait_time as u64;
+        multicast_options.packet_ttl = options.packet_ttl;
+        multicast_options.recv_timeout = options.max_wait_time as u64;
         multicast_options
     }
 }

@@ -3,6 +3,7 @@ use log::LevelFilter;
 use std::str::FromStr;
 use structopt::StructOpt;
 use upnp::ssdp::search::*;
+use upnp::SpecVersion;
 
 #[macro_use]
 extern crate env_logger;
@@ -136,7 +137,7 @@ fn do_search(
     domain: Option<String>,
     max_wait_time: Option<u8>,
 ) {
-    let mut options = Options::default();
+    let mut options = Options::default_for(SpecVersion::V10);
     options.network_interface = bind_to_interface;
     if let Some(search_target) = search_target {
         options.search_target = match search_target {

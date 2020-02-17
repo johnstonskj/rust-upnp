@@ -52,6 +52,10 @@ increased to accommodate network characteristics such as latency or propagation 
 */
 pub const HEAD_MX: &str = "MX";
 
+pub const HEAD_NT: &str = "NT";
+
+pub const HEAD_NTS: &str = "NTS";
+
 pub const HEAD_NEXT_BOOTID: &str = "NEXTBOOTID.UPNP.ORG";
 
 pub const HEAD_SEARCH_PORT: &str = "SEARCHPORT.UPNP.ORG";
@@ -73,3 +77,7 @@ pub const HEAD_USER_AGENT: &str = "USER-AGENT";
 Unique Service Name.
 */
 pub const HEAD_USN: &str = "USN";
+
+pub const NTS_ALIVE: &str = "ssdp:alive";
+
+pub const NTS_BYE: &str = "ssdp:byebye";

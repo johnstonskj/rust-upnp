@@ -18,7 +18,8 @@ use std::time::Duration;
 pub struct Options {
     pub network_interface: Option<String>,
     pub local_port: u16,
-    pub timeout: u64,
+    pub recv_timeout: u64,
+    pub packet_ttl: u32,
     pub local_network_only: bool,
     pub loop_back_also: bool,
 }
@@ -56,7 +57,8 @@ pub fn create_multicast_socket(
 
     trace!("create_multicast_socket - setting socket options");
     socket.set_nonblocking(false)?;
-    socket.set_read_timeout(Some(Duration::from_secs(options.timeout)))?;
+    socket.set_ttl(options.packet_ttl)?;
+    socket.set_read_timeout(Some(Duration::from_secs(options.recv_timeout)))?;
     match local_address {
         SocketAddr::V4(socket_address) => {
             socket.join_multicast_v4(multicast_address.ip(), &socket_address.ip())?;
@@ -69,9 +71,10 @@ pub fn create_multicast_socket(
     }
 
     trace!(
-        "create_multicast_socket - socket: {:?}, read_timeout: {:?}, multicast_ttl: {}",
+        "create_multicast_socket - socket: {:?}, read_timeout: {:?}, ttl: {:?}, multicast_ttl: {}",
         socket,
         socket.read_timeout()?,
+        socket.ttl()?,
         socket.multicast_ttl_v4()?
     );
 
@@ -153,7 +156,8 @@ impl Default for Options {
         Options {
             network_interface: None,
             local_port: 0,
-            timeout: protocol::DEFAULT_TIMEOUT,
+            recv_timeout: protocol::DEFAULT_TIMEOUT,
+            packet_ttl: 2,
             local_network_only: false,
             loop_back_also: false,
         }
