@@ -1,9 +1,4 @@
 /*!
-Search is a fundamental part of a control point's operation, typically a multicast request
-is sent out periodically and devices on the network can respond directly to the control point
-with their descriptions. With v1.1 of the SSDP specification a unicast search was added to
-send a request to a specific device.
-
 This module provides three functions that provide 1) multicast search, 2) unicast search, and 3)
 multicast search with caching. The caching version of search will merge the set of new responses
 with any (non-expired) previously cached responses.

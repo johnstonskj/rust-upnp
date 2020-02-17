@@ -25,7 +25,7 @@
 * use upnp::SpecVersion;
 * use upnp::ssdp::search::*;
 *
-* let mut options = Options::new(SpecVersion::V10);
+* let mut options = Options::default_for(SpecVersion::V10);
 * options.search_target = SearchTarget::RootDevices;
 *
 * match search_once(options) {
@@ -40,6 +40,13 @@
 *     }
 * }
 * ```
+*
+* # Documentation
+*
+* Where possible any documentation for fields, functions, and values will be taken directly from the
+* UDA specifications. In general the description will be taken from the version of the specication
+* where the component in question was first introduced.
+*
 */
 
 #![warn(
