@@ -85,7 +85,7 @@ pub fn multicast(
 ) -> Result<Vec<Response>, Error> {
     let socket = create_multicast_socket(multicast_address, options)?;
 
-    multicast_using(message, multicast_address, options, &socket)
+    multicast_using(message, multicast_address, &socket)
 }
 
 pub fn multicast_once(
@@ -95,13 +95,12 @@ pub fn multicast_once(
 ) -> Result<(), Error> {
     let socket = create_multicast_socket(multicast_address, options)?;
 
-    multicast_once_using(message, multicast_address, options, &socket)
+    multicast_once_using(message, multicast_address, &socket)
 }
 
 pub fn multicast_using(
     message: &Request,
     multicast_address: &SocketAddrV4,
-    options: &Options,
     socket: &UdpSocket,
 ) -> Result<Vec<Response>, Error> {
     multicast_send_using(message, multicast_address, socket)?;
@@ -140,7 +139,6 @@ pub fn multicast_using(
 pub fn multicast_once_using(
     message: &Request,
     multicast_address: &SocketAddrV4,
-    options: &Options,
     socket: &UdpSocket,
 ) -> Result<(), Error> {
     multicast_send_using(message, multicast_address, socket)
