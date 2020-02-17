@@ -38,6 +38,10 @@ pub struct Options {
 // ------------------------------------------------------------------------------------------------
 
 /**
+Provides an implementation of the `ssdp:alive` notification.
+
+# Specification
+
 When a device is added to the network, it multicasts discovery messages to advertise its root
 device, any embedded devices, and any services. Each discovery message contains four major
 components:
@@ -101,6 +105,10 @@ pub fn device_available(device: &mut Device, options: Options) -> Result<(), Err
 }
 
 /**
+Provides an implementation of the `ssdp:upate` notification.
+
+# Specification
+
 When a new UPnP-enabled interface is added to a multi-homed device, the device MUST increase its
 `BOOTID.UPNP.ORG` field value, multicast an `ssdp:update` message for each of the root devices,
 embedded devices and embedded services to all of the existing UPnP-enabled interfaces to announce
@@ -168,6 +176,10 @@ pub fn device_update(device: &mut Device, options: Options) -> Result<(), Error>
 }
 
 /**
+Provides an implementation of the `ssdp:byebye` notification.
+
+# Specification
+
 When a device and its services are going to be removed from the network, the device SHOULD
 multicast an `ssdp:byebye` message corresponding to each of the `ssdp:alive` messages it multicasted
 that have not already expired. If the device is removed abruptly from the network, it might not be

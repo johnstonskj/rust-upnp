@@ -127,6 +127,9 @@ pub enum Error {
     Unsupported,
 }
 
+///
+/// The protocol short form identifier used in constructing numerous values.
+///
 pub const UPNP_STRING: &str = "UPnP";
 
 // ------------------------------------------------------------------------------------------------

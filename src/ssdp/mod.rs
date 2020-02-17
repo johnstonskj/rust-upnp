@@ -1,5 +1,7 @@
 /*!
-# UPnP Device Architecture 1.0 - Discovery
+This module implements the _Simple Service Discovery Protocol_ (SSDP) specified components.
+
+# Specification
 
 This section explains the UPnP discovery protocol known as _Simple Service Discovery Protocol_
 (SSDP) in detail, enumerating how devices advertise and revoke their advertisements as well as
@@ -67,7 +69,7 @@ use std::fmt::{Display, Error, Formatter};
 
 ///
 /// This represents a specific control point, this is optional for v1.0 and v1.1 messages
-/// but `friendly_name` is required by v2.0.
+/// but the `friendly_name` field is required by the 2.0 specification.
 ///
 #[derive(Clone, Debug)]
 pub struct ControlPoint {
@@ -77,12 +79,19 @@ pub struct ControlPoint {
     pub port: Option<u16>,
 }
 
+///
+/// A product name and version, used in constructing `SERVER` and `CACHE-CONTROL` headers.
+///
 #[derive(Clone, Debug)]
 pub struct ProductVersion {
     pub name: String,
     pub version: String,
 }
 
+///
+/// The set of three products, and associated version identifiers, present in both `SERVER` and
+/// `CACHE-CONTROL` headers.
+///
 #[derive(Clone, Debug)]
 pub struct ProductVersions {
     pub operating_system: ProductVersion,
@@ -100,14 +109,14 @@ impl Display for ProductVersion {
     }
 }
 
-pub const fn default_product_version() -> ProductVersion {
-    ProductVersion {
-        name: String::new(),
-        version: String::new(),
-    }
-}
-
 impl ProductVersion {
+    pub const fn new() -> Self {
+        ProductVersion {
+            name: String::new(),
+            version: String::new(),
+        }
+    }
+
     pub fn for_upnp(version: &SpecVersion) -> Self {
         ProductVersion {
             name: UPNP_STRING.to_string(),

@@ -1,4 +1,4 @@
-use crate::ssdp::{default_product_version, ProductVersion};
+use crate::ssdp::ProductVersion;
 use crate::SpecVersion;
 use std::sync::Once;
 
@@ -7,8 +7,8 @@ const UA_NAME: &str = env!("CARGO_PKG_NAME");
 const UA_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub fn make(spec_version: &SpecVersion, product: &Option<ProductVersion>) -> String {
-    static mut PRODUCT: ProductVersion = default_product_version();
-    static mut OP_SYS: ProductVersion = default_product_version();
+    static mut PRODUCT: ProductVersion = ProductVersion::new();
+    static mut OP_SYS: ProductVersion = ProductVersion::new();
     static CAPTURE: Once = Once::new();
 
     CAPTURE.call_once(|| unsafe {

@@ -3,6 +3,10 @@ This module provides three functions that provide 1) multicast search, 2) unicas
 multicast search with caching. The caching version of search will merge the set of new responses
 with any (non-expired) previously cached responses.
 
+# Specification
+
+TBD
+
 */
 use crate::httpu::{
     multicast, Options as MulticastOptions, RequestBuilder, Response as MulticastResponse,
@@ -121,6 +125,14 @@ pub struct Response {
 ///
 /// The search function can be configured using the [`Options`](struct.Options.html) struct,
 /// although the defaults are reasonable for most clients.
+///
+/// # Specification
+///
+/// TBD
+///
+/// # Parameters
+///
+/// TBD
 ///
 pub fn search(options: Options) -> Result<ResponseCache, Error> {
     info!("search - options: {:?}", options);
