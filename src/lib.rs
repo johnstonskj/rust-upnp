@@ -22,8 +22,8 @@
 * device responses.
 *
 * ```rust,no_run
-* use upnp::SpecVersion;
-* use upnp::ssdp::search::*;
+* use upnp_rs::SpecVersion;
+* use upnp_rs::ssdp::search::*;
 *
 * let mut options = Options::default_for(SpecVersion::V10);
 * options.search_target = SearchTarget::RootDevices;

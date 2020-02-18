@@ -2,8 +2,8 @@ use human_panic::setup_panic;
 use log::LevelFilter;
 use std::str::FromStr;
 use structopt::StructOpt;
-use upnp::ssdp::search::*;
-use upnp::SpecVersion;
+use upnp_rs::ssdp::search::*;
+use upnp_rs::SpecVersion;
 
 #[macro_use]
 extern crate env_logger;

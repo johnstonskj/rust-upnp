@@ -1,4 +1,4 @@
-# Crate upnp
+# Crate upnp-rs
 
 A Rust crate providing basic Universal Plug and Play (UPnP) protocol implementations. 
 
@@ -13,6 +13,14 @@ control points to search for, and devices to notify of, device and service avail
 
 > _UPnP technology allows devices to connect seamlessly and to simplify network implementation in the home and 
 > corporate environments_ — [Open Connectivity Foundation](https://openconnectivity.org/developer/specifications/upnp-resources/upnp/).
+
+## Usage
+
+Add the following to your Cargo.toml; currently this crate has no optional features.
+
+```toml
+upnp-rs = "0.1"
+```
 
 ## API
 
@@ -43,6 +51,28 @@ respectively.
     ,---------------------------------------------------,
 ```
 
+## Example
+
+```rust
+use upnp_rs::SpecVersion;
+use upnp_rs::ssdp::search::*;
+
+let mut options = Options::default_for(SpecVersion::V10);
+options.search_target = SearchTarget::RootDevices;
+
+match search_once(options) {
+    Ok(responses) => {
+        println!("search returned {} results.", responses.len());
+        for (index, response) in responses.iter().enumerate() {
+            println!("{}: {:#?}", index, response);
+        }
+    }
+    Err(error) => {
+        println!("search failed with error: {:#?}", error);
+    }
+}
+```
+  
 ## Command-Line
 
 The command-line tool `upnp` can be used to perform basic operations using the SSDP API. Primarily these are used
