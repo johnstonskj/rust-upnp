@@ -57,8 +57,7 @@ pub enum SearchTarget {
 /// This type encapsulates a set of mostly optional values to be used to construct messages to
 /// send.
 ///
-/// As such `Options::default()` is usually sufficient, in cases where a client wishes to select
-/// a specific version of the specification use `Options::new`. Currently the only time a value
+/// Defaults should be constructed with `Options::default_for`. Currently the only time a value
 /// is required is when the version is set to 2.0, a value **is** required for the control point.
 /// The `Options::for_control_point` will set the control point as well as the version number.
 ///
@@ -96,6 +95,9 @@ struct CachedResponse {
     expiration: SystemTime,
 }
 
+///
+/// A cache wrapping a set of responses.
+///
 #[derive(Clone, Debug)]
 pub struct ResponseCache {
     options: Options,
@@ -104,6 +106,9 @@ pub struct ResponseCache {
     responses: Vec<CachedResponse>,
 }
 
+///
+/// A Single device response.
+///
 #[derive(Clone, Debug)]
 pub struct Response {
     pub max_age: Duration,
@@ -135,7 +140,8 @@ pub struct Response {
 ///
 /// # Parameters
 ///
-/// TBD
+/// * `options` - protocol options such as the specification version to use and any network
+/// configuration values.
 ///
 pub fn search(options: Options) -> Result<ResponseCache, Error> {
     info!("search - options: {:?}", options);
@@ -149,6 +155,16 @@ pub fn search(options: Options) -> Result<ResponseCache, Error> {
 ///
 /// The search function can be configured using the [`Options`](struct.Options.html) struct,
 /// although the defaults are reasonable for most clients.
+///
+/// # Specification
+///
+/// TBD
+///
+/// # Parameters
+///
+/// * `options` - protocol options such as the specification version to use and any network
+/// configuration values.
+///
 ///
 pub fn search_once(options: Options) -> Result<Vec<Response>, Error> {
     info!("search_once - options: {:?}", options);
@@ -205,6 +221,17 @@ pub fn search_once(options: Options) -> Result<Vec<Response>, Error> {
 ///
 /// The search function can be configured using the [`Options`](struct.Options.html) struct,
 /// although the defaults are reasonable for most clients.
+///
+/// # Specification
+///
+/// TBD
+///
+/// # Parameters
+///
+/// * `options` - protocol options such as the specification version to use and any network
+/// configuration values.
+/// * `device_address` - the address of the device to query.
+///
 ///
 pub fn search_once_to_device(
     options: Options,
@@ -312,6 +339,9 @@ impl FromStr for SearchTarget {
 // ------------------------------------------------------------------------------------------------
 
 impl Options {
+    ///
+    /// Construct an options object for the given specification version.
+    ///
     pub fn default_for(spec_version: SpecVersion) -> Self {
         Options {
             spec_version: spec_version.clone(),
@@ -329,12 +359,18 @@ impl Options {
         }
     }
 
+    ///
+    /// Construct an options object for the given control point.
+    ///
     pub fn for_control_point(control_point: ControlPoint) -> Self {
         let mut new = Self::default_for(SpecVersion::V20);
         new.control_point = Some(control_point.clone());
         new
     }
 
+    ///
+    /// Validate all options, ensuring values as well as version-specific rules.
+    ///
     pub fn validate(&self) -> Result<(), Error> {
         lazy_static! {
             static ref UA_VERSION: Regex = Regex::new(r"^[\d\.]+$").unwrap();

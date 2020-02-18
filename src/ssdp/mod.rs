@@ -73,18 +73,28 @@ use std::fmt::{Display, Error, Formatter};
 ///
 #[derive(Clone, Debug)]
 pub struct ControlPoint {
-    /// Corresponds to the
+    /// Specifies the friendly name of the control point. The friendly name is vendor specific.
     pub friendly_name: String,
+    /// UUID of the control point. When the control point is implemented in a UPnP device it
+    /// is recommended to use the UDN of the co-located UPnP device.
     pub uuid: Option<String>,
+    /// A control point can request that a device replies to a TCP port on the control point.
+    /// When this header is present it identifies the TCP port on which the device can reply to
+    /// the search.
     pub port: Option<u16>,
 }
 
 ///
-/// A product name and version, used in constructing `SERVER` and `CACHE-CONTROL` headers.
+/// A product name and version, used in constructing `SERVER` and `CACHE-CONTROL` headers. These
+/// arespecified by UPnP vendor. String.
+///
+/// Field value MUST begin with the following "product tokens" (defined by HTTP/1.1).
 ///
 #[derive(Clone, Debug)]
 pub struct ProductVersion {
+    /// The name part of the product token
     pub name: String,
+    /// The version part of the product token
     pub version: String,
 }
 

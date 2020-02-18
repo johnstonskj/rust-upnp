@@ -14,6 +14,9 @@ use crate::{Error, SpecVersion};
 // Public Types
 // ------------------------------------------------------------------------------------------------
 
+///
+/// Description of a device sent in _alive_ and _update_ messages.
+///
 #[derive(Clone, Debug)]
 pub struct Device {
     pub notification_type: SearchTarget,
@@ -25,6 +28,10 @@ pub struct Device {
     pub secure_location: Option<String>,
 }
 
+///
+/// This type encapsulates a set of mostly optional values to be used to construct messages to
+/// send.
+///
 #[derive(Clone, Debug)]
 pub struct Options {
     /// The specification that will be used to construct sent messages and to verify responses.
