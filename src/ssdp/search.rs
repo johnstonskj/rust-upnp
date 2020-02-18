@@ -12,6 +12,7 @@ use crate::httpu::{
     multicast, Options as MulticastOptions, RequestBuilder, Response as MulticastResponse,
 };
 use crate::ssdp::{protocol, ControlPoint, ProductVersion, ProductVersions};
+use crate::utils::interface::IP;
 use crate::utils::uri::{URI, URL};
 use crate::utils::{headers, user_agent};
 use crate::{Error, MessageErrorKind, SpecVersion};
@@ -20,7 +21,7 @@ use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::{Display, Error as FmtError, Formatter};
-use std::net::SocketAddrV4;
+use std::net::SocketAddr;
 use std::str::FromStr;
 use std::time::{Duration, SystemTime};
 
@@ -71,6 +72,8 @@ pub struct Options {
     /// A specific network interface to bind to; if specified the default address for the interface
     /// will be used, else the address `0.0.0.0:0` will be used. Default: `None`.
     pub network_interface: Option<String>,
+    /// Denotes whether the implementation wants to only use IPv4, IPv6, or doesn't care.
+    pub network_version: Option<IP>,
     /// The IP packet TTL value.
     pub packet_ttl: u32,
     /// The maximum wait time for devices to use in responding. This will also be used as the read
@@ -137,7 +140,7 @@ pub struct Response {
 pub fn search(options: Options) -> Result<ResponseCache, Error> {
     info!("search - options: {:?}", options);
     options.validate()?;
-    Err(Error::MessageFormat(MessageErrorKind::VersionMismatch))
+    Err(Error::Unsupported)
 }
 
 ///
@@ -205,7 +208,7 @@ pub fn search_once(options: Options) -> Result<Vec<Response>, Error> {
 ///
 pub fn search_once_to_device(
     options: Options,
-    device_address: SocketAddrV4,
+    device_address: SocketAddr,
 ) -> Result<Vec<Response>, Error> {
     info!(
         "search_once_to_device - options: {:?}, device_address: {:?}",
@@ -313,6 +316,7 @@ impl Options {
         Options {
             spec_version: spec_version.clone(),
             network_interface: None,
+            network_version: None,
             search_target: SearchTarget::RootDevices,
             packet_ttl: if spec_version == SpecVersion::V10 {
                 4
@@ -372,6 +376,7 @@ impl From<Options> for MulticastOptions {
     fn from(options: Options) -> Self {
         let mut multicast_options = MulticastOptions::default();
         multicast_options.network_interface = options.network_interface;
+        multicast_options.network_version = options.network_version;
         multicast_options.packet_ttl = options.packet_ttl;
         multicast_options.recv_timeout = options.max_wait_time as u64;
         multicast_options
@@ -431,7 +436,7 @@ impl TryFrom<MulticastResponse> for Response {
             &headers::check_regex(
                 response.headers.get(protocol::HEAD_CACHE_CONTROL).unwrap(),
                 protocol::HEAD_CACHE_CONTROL,
-                &Regex::new(r"max\-age[ ]*=[ ]*(\d+)").unwrap(),
+                &Regex::new(r"max-age[ ]*=[ ]*(\d+)").unwrap(),
             )?,
             protocol::HEAD_CACHE_CONTROL,
         )?;

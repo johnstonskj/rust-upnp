@@ -5,6 +5,7 @@ This module provides three functions that provide 1) device available, 2) device
 use crate::httpu::{multicast_once, Options as MulticastOptions, RequestBuilder};
 use crate::ssdp::search::SearchTarget;
 use crate::ssdp::{protocol, ProductVersion};
+use crate::utils::interface::IP;
 use crate::utils::uri::{URI, URL};
 use crate::utils::user_agent;
 use crate::{Error, SpecVersion};
@@ -26,10 +27,21 @@ pub struct Device {
 
 #[derive(Clone, Debug)]
 pub struct Options {
+    /// The specification that will be used to construct sent messages and to verify responses.
+    /// Default: `SpecVersion:V10`.
     pub spec_version: SpecVersion,
+    /// A specific network interface to bind to; if specified the default address for the interface
+    /// will be used, else the address `0.0.0.0:0` will be used. Default: `None`.
     pub network_interface: Option<String>,
-    pub max_age: u16,
+    /// Denotes whether the implementation wants to only use IPv4, IPv6, or doesn't care.
+    pub network_version: Option<IP>,
+    /// The IP packet TTL value.
     pub packet_ttl: u32,
+    /// The value used to control caching of these notifications by control points.
+    pub max_age: u16,
+    /// If specified this is to be the `ProduceName/Version` component of the user agent string
+    /// the client will generate as part of sent messages. If not specified a default value based
+    /// on the name and version of this crate will be used. Default: `None`.
     pub product_and_version: Option<ProductVersion>,
 }
 
@@ -232,6 +244,7 @@ impl Options {
         Options {
             spec_version: spec_version.clone(),
             network_interface: None,
+            network_version: None,
             max_age: 1800,
             packet_ttl: if spec_version == SpecVersion::V10 {
                 4
@@ -247,6 +260,7 @@ impl From<Options> for MulticastOptions {
     fn from(options: Options) -> Self {
         let mut multicast_options = MulticastOptions::default();
         multicast_options.network_interface = options.network_interface;
+        multicast_options.network_version = options.network_version;
         multicast_options.packet_ttl = options.packet_ttl;
         multicast_options
     }

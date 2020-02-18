@@ -22,8 +22,11 @@ struct CommandLine {
     #[structopt(long, short = "v", parse(from_occurrences))]
     verbose: i8,
 
-    #[structopt(long, short)]
+    #[structopt(long)]
     interface: Option<String>,
+
+    #[structopt(long)]
+    ip_version: Option<u8>,
 
     #[structopt(long, short = "V")]
     spec_version: Option<String>,
@@ -41,7 +44,7 @@ enum Command {
         #[structopt(long, short)]
         domain: Option<String>,
 
-        #[structopt(long, short)]
+        #[structopt(long, short = "w")]
         max_wait: Option<u8>,
     },
     Listen,
