@@ -1,4 +1,4 @@
-use crate::ssdp::ProductVersion;
+use crate::discovery::ProductVersion;
 use crate::SpecVersion;
 use std::sync::Once;
 

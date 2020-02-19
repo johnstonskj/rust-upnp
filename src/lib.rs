@@ -1,52 +1,54 @@
 /*!
-*
-* This crate implements the communication components of the _UPnP Device Architecture_ (UDA),
-* specifically the search and notification functions of the _Simple Service Discovery Protocol_
-* (SSDP). It also provides support for device description elements from the _Service Control
-* Protocol Description_ (SCPD), superceded by _General Event Notification Architecture_ (GENA).
-*
-* The UDA covers the search for devices by a control point (client) as well as how devices respond
-* with, and proactively advertise, capabilities. There are currently 3 versions of the UDA
-* specification, v[1.0](http://www.upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v1.0.pdf),
-* v[1.1](http://www.upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v1.1.pdf) (also standardized as
-* ISO/IEC 29341-1-1), and v[2.0](http://www.upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v2.0.pdf).
-*
-* For more information see the specifications and other documents at [Open Connectivity
-* Foundation](https://openconnectivity.org/developer/specifications/upnp-resources/upnp/).
-*
-* The main interface is the [`ssdp`](ssdp/index.html) module.
-*
-* # Example
-*
-* The following example issues a single v1.0 multicast search and collects and returns a set of
-* device responses.
-*
-* ```rust,no_run
-* use upnp_rs::SpecVersion;
-* use upnp_rs::ssdp::search::*;
-*
-* let mut options = Options::default_for(SpecVersion::V10);
-* options.search_target = SearchTarget::RootDevices;
-*
-* match search_once(options) {
-*     Ok(responses) => {
-*         println!("search returned {} results.", responses.len());
-*         for (index, response) in responses.iter().enumerate() {
-*             println!("{}: {:#?}", index, response);
-*         }
-*     }
-*     Err(error) => {
-*         println!("search failed with error: {:#?}", error);
-*     }
-* }
-* ```
-*
-* # Documentation
-*
-* Where possible any documentation for fields, functions, and values will be taken directly from the
-* UDA specifications. In general the description will be taken from the version of the specication
-* where the component in question was first introduced.
-*
+This crate implements the four major components of the _UPnP Device Architecture_ (UDA), namely
+
+1. Discovery, the search and notification functions via the _Simple Service Discovery Protocol_
+   (SSDP).
+2. Description, the device and service templates.
+3. Control, TBD
+4. Eventing, via the  _General Event Notification Architecture_ (GENA).
+
+The UDA covers the search for devices by a control point (client) as well as how devices respond
+with, and proactively advertise, capabilities. There are currently 3 versions of the UDA
+specification, v[1.0](http://www.upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v1.0.pdf),
+v[1.1](http://www.upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v1.1.pdf) (also standardized as
+ISO/IEC 29341-1-1), and v[2.0](http://www.upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v2.0.pdf).
+
+For more information see the specifications and other documents at [Open Connectivity
+Foundation](https://openconnectivity.org/developer/specifications/upnp-resources/upnp/).
+
+The main interface is the [`ssdp`](ssdp/index.html) module.
+
+# Example
+
+The following example issues a single v1.0 multicast search and collects and returns a set of
+device responses.
+
+```rust,no_run
+use upnp_rs::SpecVersion;
+use upnp_rs::discovery::search::*;
+
+let mut options = Options::default_for(SpecVersion::V10);
+options.search_target = SearchTarget::RootDevices;
+
+match search_once(options) {
+    Ok(responses) => {
+        println!("search returned {} results.", responses.len());
+        for (index, response) in responses.iter().enumerate() {
+            println!("{}: {:#?}", index, response);
+        }
+    }
+    Err(error) => {
+        println!("search failed with error: {:#?}", error);
+    }
+}
+```
+
+# Documentation
+
+Where possible any documentation for fields, functions, and values will be taken directly from the
+UDA specifications. In general the description will be taken from the version of the specication
+where the component in question was first introduced.
+
 */
 
 #![warn(
@@ -132,6 +134,11 @@ pub enum Error {
 ///
 pub const UPNP_STRING: &str = "UPnP";
 
+///
+/// The domain part of standard UPnP URI/URN identifiers.
+///
+pub const UPNP_DOMAIN: &str = "schemas-upnp-org";
+
 // ------------------------------------------------------------------------------------------------
 // Implementations
 // ------------------------------------------------------------------------------------------------
@@ -193,13 +200,17 @@ impl From<Utf8Error> for Error {
 // Modules
 // ------------------------------------------------------------------------------------------------
 
-pub mod ssdp;
+pub mod discovery;
 
-mod gena;
+pub mod description;
+
+pub mod control;
+
+pub mod eventing;
+
+// ------------------------------------------------------------------------------------------------
 
 mod httpu;
-
-mod scpd;
 
 mod soap;
 

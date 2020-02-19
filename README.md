@@ -24,17 +24,17 @@ upnp-rs = "0.1"
 
 ## API
 
-The main client interface is the `ssdp` module that provides `search` and `notify` capabilities. Over time the `scpd`
-module will be completed for the parsing and generation of device description messages. The following diagram shows the 
-basic structure of the library with the two API modules relying on implementations of HTTPMU/HTTPU and SOAP 
-respectively.
+The main client interface is the `discovery` module that provides `search` and `notify` capabilities. Over time 
+the `description` module will be completed for the parsing and generation of device description messages. The 
+following diagram shows the basic structure of the library with the two API modules relying on implementations of 
+HTTPMU/HTTPU and SOAP respectively.
 
 ```
 ,--------, discover ,--------,     advertise     ,--------,
-|        |--------->|  SSDP  |<------------------|        |
+|        |--------->| disco. |<------------------|        |
 | Client |          '--------'                   | Server |
 |  API   | understand   :    ,--------, describe |  API   |
-|        |------------------>|  SCPD  |<---------|        |
+|        |------------------>| descr. |<---------|        |
 '--------'              :    '--------'          '--------'
                         :         :
                         :         V

@@ -8,10 +8,10 @@ with any (non-expired) previously cached responses.
 TBD
 
 */
+use crate::discovery::{protocol, ControlPoint, ProductVersion, ProductVersions};
 use crate::httpu::{
     multicast, Options as MulticastOptions, RequestBuilder, Response as MulticastResponse,
 };
-use crate::ssdp::{protocol, ControlPoint, ProductVersion, ProductVersions};
 use crate::utils::interface::IP;
 use crate::utils::uri::{URI, URL};
 use crate::utils::{headers, user_agent};

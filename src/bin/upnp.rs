@@ -2,7 +2,7 @@ use human_panic::setup_panic;
 use log::LevelFilter;
 use std::str::FromStr;
 use structopt::StructOpt;
-use upnp_rs::ssdp::search::*;
+use upnp_rs::discovery::search::*;
 use upnp_rs::SpecVersion;
 
 #[macro_use]

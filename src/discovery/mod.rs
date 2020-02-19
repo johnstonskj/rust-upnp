@@ -1,5 +1,6 @@
 /*!
-This module implements the _Simple Service Discovery Protocol_ (SSDP) specified components.
+This module implements the UPnP discovery protocol providing availability notifications and
+search capabilities.
 
 # Specification
 

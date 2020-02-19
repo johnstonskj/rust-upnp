@@ -2,9 +2,9 @@
 This module provides three functions that provide 1) device available, 2) device updated, and
 3) device leaving notifications over multicast UDP.
 */
+use crate::discovery::search::SearchTarget;
+use crate::discovery::{protocol, ProductVersion};
 use crate::httpu::{multicast_once, Options as MulticastOptions, RequestBuilder};
-use crate::ssdp::search::SearchTarget;
-use crate::ssdp::{protocol, ProductVersion};
 use crate::utils::interface::IP;
 use crate::utils::uri::{URI, URL};
 use crate::utils::user_agent;
