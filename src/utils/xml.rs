@@ -62,17 +62,14 @@ pub fn start_ns_element<T: Write>(
     namespace: &str,
     prefix: Option<&str>,
 ) -> Result<Element, quick_xml::Error> {
-    start_element_with(
-        writer,
-        name,
-        vec![(
-            match prefix {
-                None => X_ATTR_NAMESPACE,
-                Some(p) => format!("{}:{}", X_ATTR_NAMESPACE, p).as_str(),
-            },
-            namespace,
-        )],
-    )?;
+    let xmlns = [
+        X_ATTR_NAMESPACE,
+        if prefix.is_some() { ":" } else { "" },
+        if let Some(p) = prefix { p } else { "" },
+    ]
+    .concat();
+
+    start_element_with(writer, name, vec![(xmlns.as_str(), namespace)])?;
     Ok(Element { name })
 }
 
