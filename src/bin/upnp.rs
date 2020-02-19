@@ -18,16 +18,19 @@ extern crate log;
 #[derive(Debug, StructOpt)]
 #[structopt(name = "upnp")]
 struct CommandLine {
-    /// The level of logging to perform, from off to trace
+    /// The level of logging to perform, from off to trace, default is off
     #[structopt(long, short = "v", parse(from_occurrences))]
     verbose: i8,
 
+    /// The network interface to bind to, default is all
     #[structopt(long)]
     interface: Option<String>,
 
+    /// The IP version, 4 or 6, to use when binding, default is 4
     #[structopt(long)]
     ip_version: Option<u8>,
 
+    /// The UPnP version to use, 1.0, 1.1, or 2.0, default is 1.0
     #[structopt(long, short = "V")]
     spec_version: Option<String>,
 
@@ -37,16 +40,23 @@ struct CommandLine {
 
 #[derive(Debug, StructOpt)]
 enum Command {
+    /// Issue a multicast search to find devices
     Search {
+        /// The UPnP search target (all, root, device:{id}, device-type:{id}, service-type:{id}),
+        /// default is root
         #[structopt(long, short)]
         search_target: Option<CLSearchTarget>,
 
+        /// A domain to use in constructing device and service type targets, default is the UPnP
+        /// domain.
         #[structopt(long, short)]
         domain: Option<String>,
 
+        /// The maximum wait time, in seconds, for devices to respond to multicast, default 2 .
         #[structopt(long, short = "w")]
         max_wait: Option<u8>,
     },
+    /// Listen for device notifications
     Listen,
 }
 
