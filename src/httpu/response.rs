@@ -49,7 +49,8 @@ impl TryFrom<&[u8]> for Response {
 
         let headers = decode_headers(lines)?;
 
-        println!("{:#?}", headers);
+        trace!("{:?}", headers);
+
         Ok(Response {
             status,
             headers,

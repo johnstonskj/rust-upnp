@@ -40,7 +40,7 @@ pub enum SearchTarget {
     /// Corresponds to the value `ssdp:all`
     All,
     /// Corresponds to the value `upnp:rootdevice`
-    RootDevices,
+    RootDevice,
     /// Corresponds to the value `uuid:{device-UUID}`
     Device(String),
     /// Corresponds to the value `urn:schemas-upnp-org:device:{deviceType:ver}`
@@ -276,7 +276,7 @@ impl Display for SearchTarget {
             "{}",
             match self {
                 SearchTarget::All => "ssdp::all".to_string(),
-                SearchTarget::RootDevices => "upnp:rootdevice".to_string(),
+                SearchTarget::RootDevice => "upnp:rootdevice".to_string(),
                 SearchTarget::Device(device) => format!("uuid:{}", device),
                 SearchTarget::DeviceType(device) =>
                     format!("urn:schemas-upnp-org:device:{}", device),
@@ -302,7 +302,7 @@ impl FromStr for SearchTarget {
         if s == "ssdp::all" {
             Ok(SearchTarget::All)
         } else if s == "upnp:rootdevice" {
-            Ok(SearchTarget::RootDevices)
+            Ok(SearchTarget::RootDevice)
         } else if s.starts_with("uuid:") {
             Ok(SearchTarget::Device(s[5..].to_string()))
         } else if s.starts_with("urn:schemas-upnp-org:device:") {
@@ -347,7 +347,7 @@ impl Options {
             spec_version: spec_version.clone(),
             network_interface: None,
             network_version: None,
-            search_target: SearchTarget::RootDevices,
+            search_target: SearchTarget::RootDevice,
             packet_ttl: if spec_version == SpecVersion::V10 {
                 4
             } else {

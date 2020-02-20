@@ -4,20 +4,13 @@ This module implements the UPnP device and service descriptions using the UPnP t
 use crate::discovery::search::SearchTarget;
 pub use crate::SpecVersion as TLSpecVersion;
 use crate::UPNP_DOMAIN;
-use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Error, Formatter};
 
 // ------------------------------------------------------------------------------------------------
 // Public Types
 // ------------------------------------------------------------------------------------------------
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct SpecVersion {
-    pub major: u8,
-    pub minor: u8,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug)]
 pub enum TypeID {
     Device {
         domain: String,
@@ -37,18 +30,6 @@ pub enum TypeID {
 
 // ------------------------------------------------------------------------------------------------
 // Implementations
-// ------------------------------------------------------------------------------------------------
-
-impl From<TLSpecVersion> for SpecVersion {
-    fn from(v: TLSpecVersion) -> Self {
-        match v {
-            TLSpecVersion::V10 => SpecVersion { major: 1, minor: 0 },
-            TLSpecVersion::V11 => SpecVersion { major: 1, minor: 1 },
-            TLSpecVersion::V20 => SpecVersion { major: 2, minor: 0 },
-        }
-    }
-}
-
 // ------------------------------------------------------------------------------------------------
 
 impl TypeID {
@@ -162,3 +143,5 @@ fn split_type_and_version(type_name: String) -> Result<(String, String), ()> {
 pub mod device;
 
 pub mod service;
+
+pub(crate) mod xml;

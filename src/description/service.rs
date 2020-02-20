@@ -2,15 +2,15 @@
 What's this all about then?
 */
 
+use crate::description::xml::*;
 use crate::utils::xml::*;
+use crate::SpecVersion;
 use quick_xml::{Error, Writer};
 use std::io::Write;
 
 // ------------------------------------------------------------------------------------------------
 // Public Types
 // ------------------------------------------------------------------------------------------------
-
-use crate::description::SpecVersion;
 
 #[derive(Clone, Debug)]
 pub enum Direction {
@@ -182,25 +182,9 @@ impl<T: Write> Writable<T> for StateVariable {
 
 impl<T: Write> Writable<T> for Spcd {
     fn write(&self, writer: &mut Writer<T>) -> Result<(), Error> {
-        let root = start_ns_element(
-            writer,
-            X_ELEM_SPCD,
-            "urn:schemas-upnp-org:service-1-0",
-            None,
-        )?;
+        let root = start_ns_element(writer, X_ELEM_SPCD, X_NS_SERVICE, None)?;
 
-        let spec_version = start_element(writer, X_ELEM_SPEC_VERSION)?;
-        text_element(
-            writer,
-            X_ELEM_MAJOR,
-            &self.spec_version.major.to_string().as_bytes(),
-        )?;
-        text_element(
-            writer,
-            X_ELEM_MINOR,
-            &self.spec_version.minor.to_string().as_bytes(),
-        )?;
-        spec_version.end(writer)?;
+        &self.spec_version.write(writer)?;
 
         if !&self.action_list.is_empty() {
             let list = start_element(writer, X_ELEM_ACTION_LIST)?;
@@ -223,31 +207,6 @@ impl<T: Write> Writable<T> for Spcd {
 // ------------------------------------------------------------------------------------------------
 // Private Types
 // ------------------------------------------------------------------------------------------------
-
-const X_ATTR_SEND_EVENTS: &str = "sendEvents";
-
-const X_ELEM_ACTION: &[u8] = b"action";
-const X_ELEM_ACTION_LIST: &[u8] = b"actionList";
-const X_ELEM_ARGUMENT: &[u8] = b"argument";
-const X_ELEM_ARGUMENT_LIST: &[u8] = b"argumentList";
-const X_ELEM_ALLOWED_LIST: &[u8] = b"allowedValueList";
-const X_ELEM_ALLOWED_RANGE: &[u8] = b"allowedValueRange";
-const X_ELEM_ALLOWED_VALUE: &[u8] = b"allowedValue";
-const X_ELEM_DATA_TYPE: &[u8] = b"dataType";
-const X_ELEM_DEFAULT_VALUE: &[u8] = b"defaultValue";
-const X_ELEM_DIRECTION: &[u8] = b"direction";
-const X_ELEM_MAJOR: &[u8] = b"major";
-const X_ELEM_MAXIMUM: &[u8] = b"maximum";
-const X_ELEM_MINIMUM: &[u8] = b"minimum";
-const X_ELEM_MINOR: &[u8] = b"minor";
-const X_ELEM_NAME: &[u8] = b"name";
-const X_ELEM_RETVAL: &[u8] = b"retval";
-const X_ELEM_REL_STATE_VARIABLE: &[u8] = b"relatedStateVariable";
-const X_ELEM_SPCD: &[u8] = b"spcd";
-const X_ELEM_SPEC_VERSION: &[u8] = b"specVersion";
-const X_ELEM_STATE_TABLE: &[u8] = b"serviceStateTable";
-const X_ELEM_STATE_VARIABLE: &[u8] = b"stateVariable";
-const X_ELEM_STEP: &[u8] = b"step";
 
 // ------------------------------------------------------------------------------------------------
 // Private Functions

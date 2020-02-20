@@ -6,8 +6,10 @@ What's this all about then?
 // Public Types
 // ------------------------------------------------------------------------------------------------
 
-use crate::description::{SpecVersion, TypeID};
+use crate::description::xml::*;
+use crate::description::TypeID;
 use crate::utils::xml::*;
+use crate::SpecVersion;
 use quick_xml::{Error, Writer};
 use std::io::Write;
 
@@ -73,20 +75,9 @@ pub fn to_writer<T: Write>(root: &DeviceRoot, writer: T) -> Result<(), quick_xml
 
 impl<T: Write> Writable<T> for DeviceRoot {
     fn write(&self, writer: &mut Writer<T>) -> Result<(), Error> {
-        let root = start_ns_element(writer, X_ELEM_ROOT, "urn:schemas-upnp-org:device-1-0", None)?;
+        let root = start_ns_element(writer, X_ELEM_ROOT, X_NS_DEVICE, None)?;
 
-        let spec_version = start_element(writer, X_ELEM_SPEC_VERSION)?;
-        text_element(
-            writer,
-            X_ELEM_MAJOR,
-            &self.spec_version.major.to_string().as_bytes(),
-        )?;
-        text_element(
-            writer,
-            X_ELEM_MINOR,
-            &self.spec_version.minor.to_string().as_bytes(),
-        )?;
-        spec_version.end(writer)?;
+        &self.spec_version.write(writer)?;
 
         text_element(
             writer,
@@ -234,40 +225,6 @@ impl<T: Write> Writable<T> for Service {
 // Private Types
 // ------------------------------------------------------------------------------------------------
 
-const X_ELEM_DEVICE: &[u8] = b"device";
-const X_ELEM_DEVICE_LIST: &[u8] = b"deviceList";
-const X_ELEM_DEVICE_TYPE: &[u8] = b"deviceType";
-const X_ELEM_FRIENDLY_NAME: &[u8] = b"friendlyName";
-const X_ELEM_ICON: &[u8] = b"icon";
-const X_ELEM_ICON_DEPTH: &[u8] = b"depth";
-const X_ELEM_ICON_HEIGHT: &[u8] = b"height";
-const X_ELEM_ICON_LIST: &[u8] = b"iconList";
-const X_ELEM_ICON_MIME_TYPE: &[u8] = b"mimetype";
-const X_ELEM_ICON_URL: &[u8] = b"url";
-const X_ELEM_ICON_WIDTH: &[u8] = b"width";
-const X_ELEM_MAJOR: &[u8] = b"major";
-const X_ELEM_MANUFACTURER: &[u8] = b"manufacturer";
-const X_ELEM_MANUFACTURER_URL: &[u8] = b"manufacturerURL";
-const X_ELEM_MINOR: &[u8] = b"minor";
-const X_ELEM_MODEL_DESCR: &[u8] = b"modelDescription";
-const X_ELEM_MODEL_NAME: &[u8] = b"modelName";
-const X_ELEM_MODEL_NUMBER: &[u8] = b"modelNumber";
-const X_ELEM_MODEL_URL: &[u8] = b"modelURL";
-const X_ELEM_PRESENTATION_URL: &[u8] = b"presentationURL";
-const X_ELEM_ROOT: &[u8] = b"root";
-const X_ELEM_SERIAL_NUMBER: &[u8] = b"serialNumber";
-const X_ELEM_SERVICE: &[u8] = b"service";
-const X_ELEM_SERVICE_CONTROL_URL: &[u8] = b"controlURL";
-const X_ELEM_SERVICE_EVENT_URL: &[u8] = b"eventSubURL";
-const X_ELEM_SERVICE_ID: &[u8] = b"serviceId";
-const X_ELEM_SERVICE_LIST: &[u8] = b"serviceList";
-const X_ELEM_SERVICE_SCPD_URL: &[u8] = b"SCPDURL";
-const X_ELEM_SERVICE_TYPE: &[u8] = b"serviceType";
-const X_ELEM_SPEC_VERSION: &[u8] = b"specVersion";
-const X_ELEM_UDN: &[u8] = b"UDN";
-const X_ELEM_UPC: &[u8] = b"UPC";
-const X_ELEM_URL_BASE: &[u8] = b"URLBase";
-
 // ------------------------------------------------------------------------------------------------
 // Unit Tests
 // ------------------------------------------------------------------------------------------------
@@ -275,7 +232,7 @@ const X_ELEM_URL_BASE: &[u8] = b"URLBase";
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::description::TLSpecVersion;
+    use crate::SpecVersion;
     use std::io;
 
     /*
@@ -314,7 +271,7 @@ mod tests {
     #[test]
     fn test_xml_serialize() {
         let device = DeviceRoot {
-            spec_version: SpecVersion::from(TLSpecVersion::V10),
+            spec_version: SpecVersion::V10,
             url_base: "http://10.59.104.28:49152/".to_string(),
             device: Device {
                 device_type: TypeID::new_device("Basic".to_string(), "1".to_string()),

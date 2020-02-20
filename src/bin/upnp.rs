@@ -63,7 +63,7 @@ enum Command {
 #[derive(Debug)]
 pub enum CLSearchTarget {
     All,
-    RootDevices,
+    RootDevice,
     Device(String),
     DeviceType(String),
     ServiceType(String),
@@ -85,11 +85,11 @@ impl FromStr for CLSearchTarget {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.is_empty() {
-            Ok(CLSearchTarget::RootDevices)
+            Ok(CLSearchTarget::RootDevice)
         } else if s == "all" {
             Ok(CLSearchTarget::All)
         } else if s == "root" {
-            Ok(CLSearchTarget::RootDevices)
+            Ok(CLSearchTarget::RootDevice)
         } else if s.starts_with("device:") {
             Ok(CLSearchTarget::Device(s[7..].to_string()))
         } else if s.starts_with("device-type:") {
@@ -189,7 +189,7 @@ fn do_search(
     if let Some(search_target) = search_target {
         options.search_target = match search_target {
             CLSearchTarget::All => SearchTarget::All,
-            CLSearchTarget::RootDevices => SearchTarget::RootDevices,
+            CLSearchTarget::RootDevice => SearchTarget::RootDevice,
             CLSearchTarget::Device(d) => SearchTarget::Device(d),
             CLSearchTarget::DeviceType(dt) => {
                 if let Some(domain) = domain {
@@ -210,11 +210,33 @@ fn do_search(
     if let Some(max_wait_time) = max_wait_time {
         options.max_wait_time = max_wait_time;
     }
+    println!(
+        r#"
+# UPnP Search Response
+    
+Search parameters
+
+* UPnP version: {}
+* Search Target: `{}`
+* Network interface: {}
+* Wait time: {} seconds
+    
+## Results "#,
+        &options.spec_version,
+        &options.search_target,
+        match &options.network_interface {
+            None => "all".to_string(),
+            Some(s) => s.to_string(),
+        },
+        &options.max_wait_time
+    );
     match search_once(options) {
         Ok(responses) => {
-            println!("search returned {} results.", responses.len());
-            for (index, response) in responses.iter().enumerate() {
-                println!("{}: {:#?}", index, response);
+            for response in responses.iter() {
+                println!("\n**[{}]({})**\n", response.service_name, response.location);
+                println!("* Product Version: {}", response.versions.product);
+                println!("* UPnP Version:    {}", response.versions.upnp);
+                println!("* O/S Version:     {}", response.versions.operating_system);
             }
         }
         Err(error) => {
