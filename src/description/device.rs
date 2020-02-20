@@ -9,8 +9,8 @@ What's this all about then?
 use crate::common::xml::*;
 use crate::description::xml::*;
 use crate::description::TypeID;
-use crate::SpecVersion;
-use quick_xml::{Error, Writer};
+use crate::{Error, SpecVersion};
+use quick_xml::Writer;
 use std::io::Write;
 
 #[derive(Clone, Debug)]
@@ -61,17 +61,15 @@ pub struct DeviceRoot {
 // Public Functions
 // ------------------------------------------------------------------------------------------------
 
-pub fn to_writer<T: Write>(root: &DeviceRoot, writer: T) -> Result<(), quick_xml::Error> {
-    let mut xml = Writer::new(writer);
-
-    start(&mut xml)?;
-
-    root.write(&mut xml)
+pub fn to_writer<T: Write>(root: &DeviceRoot, writer: T) -> Result<(), Error> {
+    root.write_root(writer)
 }
 
 // ------------------------------------------------------------------------------------------------
 // Implementations
 // ------------------------------------------------------------------------------------------------
+
+impl<T: Write> RootWritable<T> for DeviceRoot {}
 
 impl<T: Write> Writable<T> for DeviceRoot {
     fn write(&self, writer: &mut Writer<T>) -> Result<(), Error> {
@@ -87,7 +85,7 @@ impl<T: Write> Writable<T> for DeviceRoot {
 
         self.device.write(writer)?;
 
-        root.end(writer)
+        root.end(writer).map_err(|e| e.into())
     }
 }
 
@@ -161,7 +159,7 @@ impl<T: Write> Writable<T> for Device {
             text_element(writer, X_ELEM_PRESENTATION_URL, s.as_bytes())?;
         }
 
-        top.end(writer)
+        top.end(writer).map_err(|e| e.into())
     }
 }
 
@@ -187,7 +185,7 @@ impl<T: Write> Writable<T> for Icon {
         )?;
         text_element(writer, X_ELEM_ICON_URL, &self.url.as_bytes())?;
 
-        element.end(writer)
+        element.end(writer).map_err(|e| e.into())
     }
 }
 
@@ -217,7 +215,7 @@ impl<T: Write> Writable<T> for Service {
             &self.event_sub_url.as_bytes(),
         )?;
 
-        element.end(writer)
+        element.end(writer).map_err(|e| e.into())
     }
 }
 

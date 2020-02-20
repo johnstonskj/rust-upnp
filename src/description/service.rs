@@ -4,8 +4,9 @@ What's this all about then?
 
 use crate::common::xml::*;
 use crate::description::xml::*;
+use crate::Error;
 use crate::SpecVersion;
-use quick_xml::{Error, Writer};
+use quick_xml::Writer;
 use std::io::Write;
 
 // ------------------------------------------------------------------------------------------------
@@ -64,12 +65,8 @@ pub struct Spcd {
 // Public Functions
 // ------------------------------------------------------------------------------------------------
 
-pub fn to_writer<T: Write>(root: &Spcd, writer: T) -> Result<(), quick_xml::Error> {
-    let mut xml = Writer::new(writer);
-
-    start(&mut xml)?;
-
-    root.write(&mut xml)
+pub fn to_writer<T: Write>(root: &Spcd, writer: T) -> Result<(), Error> {
+    root.write_root(writer)
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -101,7 +98,7 @@ impl<T: Write> Writable<T> for Argument {
             &self.related_state_variable.as_bytes(),
         )?;
 
-        argument.end(writer)
+        argument.end(writer).map_err(|e| e.into())
     }
 }
 
@@ -119,7 +116,7 @@ impl<T: Write> Writable<T> for Action {
             list.end(writer)?;
         }
 
-        action.end(writer)
+        action.end(writer).map_err(|e| e.into())
     }
 }
 
@@ -131,7 +128,7 @@ impl<T: Write> Writable<T> for AllowedValue {
                 for value in values {
                     text_element(writer, X_ELEM_ALLOWED_VALUE, value.as_bytes())?;
                 }
-                list.end(writer)
+                list.end(writer).map_err(|e| e.into())
             }
             AllowedValue::Range {
                 minimum,
@@ -147,7 +144,7 @@ impl<T: Write> Writable<T> for AllowedValue {
                 if let Some(step) = step {
                     text_element(writer, X_ELEM_STEP, step.as_bytes())?;
                 }
-                range.end(writer)
+                range.end(writer).map_err(|e| e.into())
             }
         }
     }
@@ -176,9 +173,11 @@ impl<T: Write> Writable<T> for StateVariable {
             allowed.write(writer)?;
         }
 
-        variable.end(writer)
+        variable.end(writer).map_err(|e| e.into())
     }
 }
+
+impl<T: Write> RootWritable<T> for Spcd {}
 
 impl<T: Write> Writable<T> for Spcd {
     fn write(&self, writer: &mut Writer<T>) -> Result<(), Error> {
@@ -200,7 +199,7 @@ impl<T: Write> Writable<T> for Spcd {
         }
         list.end(writer)?;
 
-        root.end(writer)
+        root.end(writer).map_err(|e| e.into())
     }
 }
 

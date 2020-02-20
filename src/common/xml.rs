@@ -7,6 +7,7 @@ More detailed description, with
 
 */
 
+use crate::Error;
 use quick_xml::events::{attributes::Attribute, BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 use quick_xml::Writer;
 use std::io::Write;
@@ -21,7 +22,17 @@ pub struct Element {
 }
 
 pub trait Writable<T: Write> {
-    fn write(&self, writer: &mut Writer<T>) -> Result<(), quick_xml::Error>;
+    fn write(&self, writer: &mut Writer<T>) -> Result<(), Error>;
+}
+
+pub trait RootWritable<T: Write>: Writable<T> {
+    fn write_root(&self, writer: T) -> Result<(), Error> {
+        let mut xml = Writer::new(writer);
+
+        start(&mut xml)?;
+
+        self.write(&mut xml)
+    }
 }
 
 pub const X_DECL_VERSION: &[u8] = b"1.0";

@@ -66,7 +66,7 @@ extern crate log;
 
 use crate::common::xml;
 use crate::description::xml::{X_ELEM_MAJOR, X_ELEM_MINOR, X_ELEM_SPEC_VERSION};
-use quick_xml::Writer;
+use quick_xml::{Error as XMLError, Writer};
 use std::fmt::{Display, Error as FmtError, Formatter};
 use std::io::{Error as IOError, ErrorKind as IOErrorKind, Write};
 use std::str::{FromStr, Utf8Error};
@@ -116,6 +116,7 @@ pub enum MessageErrorKind {
     FieldTypeMismatch,
     /// The field value was not valid in the current context
     InvalidFieldValue,
+    XmlFormattingError,
 }
 
 ///
@@ -187,7 +188,7 @@ impl FromStr for SpecVersion {
 }
 
 impl<T: Write> xml::Writable<T> for SpecVersion {
-    fn write(&self, writer: &mut Writer<T>) -> Result<(), quick_xml::Error> {
+    fn write(&self, writer: &mut Writer<T>) -> Result<(), Error> {
         let spec_version = xml::start_element(writer, X_ELEM_SPEC_VERSION)?;
         xml::text_element(
             writer,
@@ -209,7 +210,7 @@ impl<T: Write> xml::Writable<T> for SpecVersion {
             }
             .as_bytes(),
         )?;
-        spec_version.end(writer)
+        spec_version.end(writer).map_err(|e| e.into())
     }
 }
 
@@ -226,6 +227,13 @@ impl From<Utf8Error> for Error {
     fn from(e: Utf8Error) -> Self {
         error!("UTF-8 encoding error: {:?}", e);
         Error::MessageFormat(MessageErrorKind::InvalidEncoding)
+    }
+}
+
+impl From<XMLError> for Error {
+    fn from(e: XMLError) -> Self {
+        error!("XML error: {:?}", e);
+        Error::MessageFormat(MessageErrorKind::XmlFormattingError)
     }
 }
 
