@@ -1,4 +1,4 @@
-use crate::httpu::request::Request;
+use crate::common::httpu::request::Request;
 use std::collections::HashMap;
 
 #[derive(Debug)]

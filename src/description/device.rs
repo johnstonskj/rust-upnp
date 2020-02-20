@@ -6,9 +6,9 @@ What's this all about then?
 // Public Types
 // ------------------------------------------------------------------------------------------------
 
+use crate::common::xml::*;
 use crate::description::xml::*;
 use crate::description::TypeID;
-use crate::utils::xml::*;
 use crate::SpecVersion;
 use quick_xml::{Error, Writer};
 use std::io::Write;

@@ -8,13 +8,13 @@ with any (non-expired) previously cached responses.
 TBD
 
 */
-use crate::discovery::{protocol, ControlPoint, ProductVersion, ProductVersions};
-use crate::httpu::{
+use crate::common::httpu::{
     multicast, Options as MulticastOptions, RequestBuilder, Response as MulticastResponse,
 };
-use crate::utils::interface::IP;
-use crate::utils::uri::{URI, URL};
-use crate::utils::{headers, user_agent};
+use crate::common::interface::IP;
+use crate::common::uri::{URI, URL};
+use crate::common::{headers, user_agent};
+use crate::discovery::{protocol, ControlPoint, ProductVersion, ProductVersions};
 use crate::{Error, MessageErrorKind, SpecVersion};
 use regex::Regex;
 use std::borrow::Borrow;

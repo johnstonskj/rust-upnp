@@ -2,8 +2,8 @@
 What's this all about then?
 */
 
+use crate::common::xml::*;
 use crate::description::xml::*;
-use crate::utils::xml::*;
 use crate::SpecVersion;
 use quick_xml::{Error, Writer};
 use std::io::Write;

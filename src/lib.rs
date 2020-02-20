@@ -64,8 +64,8 @@ extern crate lazy_static;
 #[macro_use]
 extern crate log;
 
+use crate::common::xml;
 use crate::description::xml::{X_ELEM_MAJOR, X_ELEM_MINOR, X_ELEM_SPEC_VERSION};
-use crate::utils::xml;
 use quick_xml::Writer;
 use std::fmt::{Display, Error as FmtError, Formatter};
 use std::io::{Error as IOError, ErrorKind as IOErrorKind, Write};
@@ -243,8 +243,4 @@ pub mod eventing;
 
 // ------------------------------------------------------------------------------------------------
 
-mod httpu;
-
-mod soap;
-
-mod utils;
+pub(crate) mod common;

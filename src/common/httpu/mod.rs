@@ -3,7 +3,7 @@ This module implements the _HTTP Multicast UDP_ (HTTPMU) and _HTTP Unicast UDP_ 
 components.
 */
 
-use crate::utils::interface;
+use crate::common::interface;
 use crate::Error;
 use std::convert::TryFrom;
 use std::io::ErrorKind as IOErrorKind;
@@ -204,7 +204,7 @@ mod request;
 pub use request::Request;
 
 mod response;
-use crate::utils::interface::IP;
+use crate::common::interface::IP;
 pub use response::Response;
 
 mod protocol;
