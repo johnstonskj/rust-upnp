@@ -191,8 +191,8 @@ pub struct NodeImpl {
     pub(crate) i_node_type: NodeType,
     pub(crate) i_name: Name,
     pub(crate) i_value: Option<String>,
-    pub(crate) i_parent_node: Option<RefNode>,
-    pub(crate) i_owner_document: Option<RefNode>,
+    pub(crate) i_parent_node: Option<WeakRefNode>,
+    pub(crate) i_owner_document: Option<WeakRefNode>,
     pub(crate) i_attributes: HashMap<Name, RefNode>,
     pub(crate) i_child_nodes: Vec<RefNode>,
     // for Document

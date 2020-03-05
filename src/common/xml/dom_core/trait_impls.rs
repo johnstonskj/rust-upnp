@@ -2,11 +2,10 @@ use self::super::error::*;
 use self::super::name::*;
 use self::super::syntax::*;
 use self::super::traits::*;
-use crate::common::xml::dom_core::rc_cell::RcRefCell;
+use crate::common::xml::dom_core::rc_cell::{RcRefCell, WeakRefCell};
 use std::collections::hash_map::RandomState;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Result as FmtResult};
-use std::ops::Deref;
 use std::str::FromStr;
 
 // ------------------------------------------------------------------------------------------------
@@ -43,7 +42,10 @@ impl Node for RefNode {
 
     fn parent_node(&self) -> Option<RefNode> {
         let ref_self = self.borrow();
-        ref_self.i_parent_node.clone()
+        match &ref_self.i_parent_node {
+            None => None,
+            Some(node) => node.clone().upgrade(),
+        }
     }
 
     fn child_nodes(&self) -> Vec<RefNode> {
@@ -74,7 +76,10 @@ impl Node for RefNode {
 
     fn owner_document(&self) -> Option<RefNode> {
         let ref_self = self.borrow();
-        ref_self.i_owner_document.clone()
+        match &ref_self.i_owner_document {
+            None => None,
+            Some(node) => node.clone().upgrade(),
+        }
     }
 
     fn insert_before(&mut self, _new_child: RefNode, _ref_child: &RefNode) -> Result<RefNode> {
@@ -89,7 +94,7 @@ impl Node for RefNode {
         // update child with references
         {
             let mut mut_child = new_child.borrow_mut();
-            mut_child.i_parent_node = Some(self.to_owned());
+            mut_child.i_parent_node = Some(self.to_owned().downgrade());
 
             let ref_self = self.borrow();
             mut_child.i_document_element = ref_self.i_document_element.clone();
@@ -104,7 +109,7 @@ impl Node for RefNode {
             mut_self.i_child_nodes.push(new_child.clone());
         }
 
-        let id_map = mut_self.i_document_element.as_ref().unwrap().borrow_mut();
+        let _id_map = mut_self.i_document_element.as_ref().unwrap().borrow_mut();
 
         // if child_node_type == NodeType::Element {
         //     let child_element = &new_child as &dyn Element;
@@ -146,24 +151,80 @@ impl Attribute for RefNode {}
 // ------------------------------------------------------------------------------------------------
 
 impl CharacterData for RefNode {
-    fn substring(&self, _offset: usize, _count: usize) -> Result<String> {
-        unimplemented!()
+    fn substring(&self, offset: usize, count: usize) -> Result<String> {
+        let ref_self = self.borrow();
+        match &ref_self.i_value {
+            None => Err(Error::IndexSize),
+            Some(data) => Ok(data[offset..offset + count].to_string()),
+        }
     }
 
-    fn append(&mut self, _data: &str) -> Result<()> {
-        unimplemented!()
+    fn append(&mut self, new_data: &str) -> Result<()> {
+        if !new_data.is_empty() {
+            let mut mut_self = self.borrow_mut();
+            match &mut_self.i_value {
+                None => mut_self.i_value = Some(new_data.to_string()),
+                Some(old_data) => mut_self.i_value = Some(format!("{}{}", old_data, new_data)),
+            }
+        }
+        Ok(())
     }
 
-    fn insert(&mut self, _offset: usize, _data: &str) -> Result<()> {
-        unimplemented!()
+    fn insert(&mut self, offset: usize, new_data: &str) -> Result<()> {
+        if !new_data.is_empty() {
+            let mut mut_self = self.borrow_mut();
+            match &mut_self.i_value {
+                None => {
+                    if offset != 0 {
+                        Err(Error::IndexSize)
+                    } else {
+                        mut_self.i_value = Some(new_data.to_string());
+                        Ok(())
+                    }
+                }
+                Some(old_data) => {
+                    if offset >= old_data.len() {
+                        Err(Error::IndexSize)
+                    } else {
+                        mut_self.i_value = Some(format!("{}{}", old_data, new_data));
+                        Ok(())
+                    }
+                }
+            }
+        } else {
+            Ok(())
+        }
     }
 
-    fn delete(&mut self, _offset: usize, _count: usize) -> Result<()> {
-        unimplemented!()
+    fn delete(&mut self, offset: usize, count: usize) -> Result<()> {
+        self.replace(offset, count, "")
     }
 
-    fn replace(&mut self, _offset: usize, _count: usize, _data: &str) -> Result<()> {
-        unimplemented!()
+    fn replace(&mut self, offset: usize, count: usize, replace_data: &str) -> Result<()> {
+        if count > 0 {
+            let mut mut_self = self.borrow_mut();
+            match &mut_self.i_value {
+                None => {
+                    if offset != 0 {
+                        Err(Error::IndexSize)
+                    } else {
+                        Ok(())
+                    }
+                }
+                Some(old_data) => {
+                    if offset >= old_data.len() {
+                        Err(Error::IndexSize)
+                    } else {
+                        let mut new_data = old_data.clone();
+                        new_data.replace_range(offset..offset + count, replace_data);
+                        mut_self.i_value = Some(new_data);
+                        Ok(())
+                    }
+                }
+            }
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -302,7 +363,7 @@ impl Element for RefNode {
     }
 
     fn remove_attribute(&mut self, name: &str) -> Result<()> {
-        let attr_name = Name::from_str(name)?;
+        let _attr_name = Name::from_str(name)?;
         unimplemented!()
     }
 
