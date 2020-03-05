@@ -12,7 +12,7 @@ fn test_create_simple_doc() {
     println!("element 1: {:#?}", root);
 
     let mut root_node = document_node.append_child(root).unwrap();
-    let mut root = &mut root_node as &mut dyn Element;
+    let root = &mut root_node as &mut dyn Element;
     root.set_attribute("version", "1.0");
     root.set_attribute("something", "else");
 
