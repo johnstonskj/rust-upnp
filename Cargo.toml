@@ -41,3 +41,6 @@ reqwest = { version = "0.10", features = ["blocking"] }
 
 # HTTP serve
 #warp = "0.2"
+
+[dev-dependencies]
+env_logger = "0.7"

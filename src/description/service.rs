@@ -2,7 +2,7 @@
 What's this all about then?
 */
 
-use crate::common::xml::*;
+use crate::common::xml::write::*;
 use crate::description::xml::*;
 use crate::Error;
 use crate::SpecVersion;
@@ -65,8 +65,8 @@ pub struct Spcd {
 // Public Functions
 // ------------------------------------------------------------------------------------------------
 
-pub fn to_writer<T: Write>(root: &Spcd, writer: T) -> Result<(), Error> {
-    root.write_root(writer)
+pub fn to_writer<T: Write>(root: &Spcd, writer: T) -> Result<T, Error> {
+    Ok(root.write_root(writer)?)
 }
 
 // ------------------------------------------------------------------------------------------------

@@ -187,10 +187,10 @@ impl FromStr for SpecVersion {
     }
 }
 
-impl<T: Write> xml::Writable<T> for SpecVersion {
+impl<T: Write> xml::write::Writable<T> for SpecVersion {
     fn write(&self, writer: &mut Writer<T>) -> Result<(), Error> {
-        let spec_version = xml::start_element(writer, X_ELEM_SPEC_VERSION)?;
-        xml::text_element(
+        let spec_version = xml::write::start_element(writer, X_ELEM_SPEC_VERSION)?;
+        xml::write::text_element(
             writer,
             X_ELEM_MAJOR,
             match self {
@@ -200,7 +200,7 @@ impl<T: Write> xml::Writable<T> for SpecVersion {
             }
             .as_bytes(),
         )?;
-        xml::text_element(
+        xml::write::text_element(
             writer,
             X_ELEM_MINOR,
             match self {
@@ -248,6 +248,8 @@ pub mod description;
 pub mod control;
 
 pub mod eventing;
+
+pub use common::xml::dom_core;
 
 // ------------------------------------------------------------------------------------------------
 

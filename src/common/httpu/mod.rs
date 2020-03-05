@@ -14,6 +14,8 @@ use std::time::Duration;
 // Public Types
 // ------------------------------------------------------------------------------------------------
 
+//type CallbackFn = fn(&Response) -> bool;
+
 #[derive(Clone, Debug)]
 pub struct Options {
     pub network_interface: Option<String>,
@@ -23,6 +25,7 @@ pub struct Options {
     pub packet_ttl: u32,
     pub local_network_only: bool,
     pub loop_back_also: bool,
+    //    pub callback: Option<CallbackFn>,
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -174,6 +177,7 @@ impl Default for Options {
             packet_ttl: 2,
             local_network_only: false,
             loop_back_also: false,
+            //callback: None,
         }
     }
 }

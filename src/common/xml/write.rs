@@ -26,12 +26,14 @@ pub trait Writable<T: Write> {
 }
 
 pub trait RootWritable<T: Write>: Writable<T> {
-    fn write_root(&self, writer: T) -> Result<(), Error> {
+    fn write_root(&self, writer: T) -> Result<T, Error> {
         let mut xml = Writer::new(writer);
 
         start(&mut xml)?;
 
-        self.write(&mut xml)
+        self.write(&mut xml)?;
+
+        Ok(xml.into_inner())
     }
 }
 

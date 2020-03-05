@@ -54,6 +54,16 @@ pub enum SearchTarget {
 }
 
 ///
+/// If present on a search function it will be called once for each received response
+/// in addition to those responses being returned from the function.
+///
+/// The result is a boolean, if true the function will continue to process results,
+/// if false no further responses are processed and the search will only return results
+/// until this last one.
+///
+type CallbackFn = fn(&Response) -> bool;
+
+///
 /// This type encapsulates a set of mostly optional values to be used to construct messages to
 /// send.
 ///
@@ -561,3 +571,7 @@ impl ResponseCache {
 // ------------------------------------------------------------------------------------------------
 // Private Functions
 // ------------------------------------------------------------------------------------------------
+
+//fn callback_wrapper(inner: &CallbackFn) -> bool {
+//    false
+//}

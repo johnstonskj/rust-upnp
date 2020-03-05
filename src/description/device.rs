@@ -6,7 +6,7 @@ What's this all about then?
 // Public Types
 // ------------------------------------------------------------------------------------------------
 
-use crate::common::xml::*;
+use crate::common::xml::write::*;
 use crate::description::xml::*;
 use crate::description::TypeID;
 use crate::{Error, SpecVersion};
@@ -61,8 +61,8 @@ pub struct DeviceRoot {
 // Public Functions
 // ------------------------------------------------------------------------------------------------
 
-pub fn to_writer<T: Write>(root: &DeviceRoot, writer: T) -> Result<(), Error> {
-    root.write_root(writer)
+pub fn to_writer<T: Write>(root: &DeviceRoot, writer: T) -> Result<T, Error> {
+    Ok(root.write_root(writer)?)
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -231,7 +231,7 @@ impl<T: Write> Writable<T> for Service {
 mod tests {
     use super::*;
     use crate::SpecVersion;
-    use std::io;
+    use std::str::from_utf8;
 
     /*
     <?xml version="1.0"?>
@@ -265,6 +265,8 @@ mod tests {
     <URLBase>http://10.59.104.28:49152/</URLBase>
     </root>
         */
+
+    const EX_DEVICE: &str = "<?xml version=\"1.0\"?><root xmlns=\"urn:schemas-upnp-org:device-1-0\"><specVersion><major>1</major><minor>0</minor></specVersion><URLBase>http://10.59.104.28:49152/</URLBase><device><deviceType>urn:schemas-upnp-org:device:Basic:1</deviceType><friendlyName>AXIS P3301 - 00408CA45086</friendlyName><manufacturer>AXIS</manufacturer><manufacturerURL>http://www.axis.com/</manufacturerURL><modelDescription>AXIS P3301 Network Fixed Dome Camera</modelDescription><modelName>AXIS P3301</modelName><modelNumber>P3301</modelNumber><modelURL>http://www.axis.com/</modelURL><serialNumber>00408CA45086</serialNumber><UDN>uuid:Upnp-BasicDevice-1_0-00408CA45086</UDN><serviceList><service><serviceType>urn:axis-com:service:BasicService:1</serviceType><serviceId>urn:axis-com:serviceId:BasicServiceId</serviceId><SCPDURL>/scpd_basic.xml</SCPDURL><controlURL>/upnp/control/BasicServiceId</controlURL><eventSubURL>/upnp/event/BasicServiceId</eventSubURL></service></serviceList><presentationURL>http://10.59.104.28:80/</presentationURL></device></root>";
 
     #[test]
     fn test_xml_serialize() {
@@ -300,7 +302,11 @@ mod tests {
             },
         };
         println!("\n{:#?}\n", device);
-        to_writer(&device, io::stdout()).unwrap();
-        println!("\n\n");
+        let w = Vec::new();
+        let written = to_writer(&device, w).unwrap();
+        let xml = from_utf8(&written).unwrap();
+        println!("{}\n\n", xml);
+
+        assert_eq!(xml, EX_DEVICE);
     }
 }
