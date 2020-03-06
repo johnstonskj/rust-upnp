@@ -2,7 +2,7 @@ use self::super::error::*;
 use self::super::name::*;
 use self::super::syntax::*;
 use self::super::traits::*;
-use crate::common::xml::dom_core::rc_cell::{RcRefCell, WeakRefCell};
+use crate::common::xml::dom_core::rc_cell::RcRefCell;
 use std::collections::hash_map::RandomState;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Result as FmtResult};
@@ -529,7 +529,7 @@ impl Display for RefNode {
 // ------------------------------------------------------------------------------------------------
 
 impl NodeImpl {
-    pub fn new_element(name: Name) -> Self {
+    pub(crate) fn new_element(name: Name) -> Self {
         Self {
             i_node_type: NodeType::Element,
             i_name: name,
@@ -542,7 +542,7 @@ impl NodeImpl {
             i_document_type: None,
         }
     }
-    pub fn new_attribute(name: Name, value: Option<&str>) -> Self {
+    pub(crate) fn new_attribute(name: Name, value: Option<&str>) -> Self {
         Self {
             i_node_type: NodeType::Attribute,
             i_name: name,
@@ -555,7 +555,7 @@ impl NodeImpl {
             i_document_type: None,
         }
     }
-    pub fn new_text(data: &str) -> Self {
+    pub(crate) fn new_text(data: &str) -> Self {
         Self {
             i_node_type: NodeType::Text,
             i_name: Name::for_text(),
@@ -568,7 +568,7 @@ impl NodeImpl {
             i_document_type: None,
         }
     }
-    pub fn new_cdata(data: &str) -> Self {
+    pub(crate) fn new_cdata(data: &str) -> Self {
         Self {
             i_node_type: NodeType::CData,
             i_name: Name::for_cdata(),
@@ -581,7 +581,7 @@ impl NodeImpl {
             i_document_type: None,
         }
     }
-    pub fn new_processing_instruction(target: Name, data: Option<&str>) -> Self {
+    pub(crate) fn new_processing_instruction(target: Name, data: Option<&str>) -> Self {
         Self {
             i_node_type: NodeType::ProcessingInstruction,
             i_name: target,
@@ -594,7 +594,7 @@ impl NodeImpl {
             i_document_type: None,
         }
     }
-    pub fn new_comment(data: &str) -> Self {
+    pub(crate) fn new_comment(data: &str) -> Self {
         Self {
             i_node_type: NodeType::Comment,
             i_name: Name::for_cdata(),
@@ -607,7 +607,7 @@ impl NodeImpl {
             i_document_type: None,
         }
     }
-    pub fn new_document(name: Name, doc_type: Option<RefNode>) -> Self {
+    pub(crate) fn new_document(name: Name, doc_type: Option<RefNode>) -> Self {
         Self {
             i_node_type: NodeType::Document,
             i_name: name,
@@ -620,7 +620,7 @@ impl NodeImpl {
             i_document_type: doc_type,
         }
     }
-    pub fn new_document_type(name: Name, public_id: &str, system_id: &str) -> Self {
+    pub(crate) fn new_document_type(name: Name, public_id: &str, system_id: &str) -> Self {
         let new_doc_type = Self {
             i_node_type: NodeType::DocumentType,
             i_name: name,
