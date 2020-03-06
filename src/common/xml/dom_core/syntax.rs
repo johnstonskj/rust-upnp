@@ -13,8 +13,8 @@ pub const XML_CDATA_END: &str = "]]>";
 
 pub const XML_DOCTYPE_START: &str = "<!DOCTYPE";
 pub const XML_DOCTYPE_END: &str = ">";
-pub const XML_DOCTYPE_ENTITY_START: &str = "[";
-pub const XML_DOCTYPE_ENTITY_END: &str = "]";
+//pub const XML_DOCTYPE_ENTITY_START: &str = "[";
+//pub const XML_DOCTYPE_ENTITY_END: &str = "]";
 pub const XML_DOCTYPE_PUBLIC: &str = "PUBLIC";
 pub const XML_DOCTYPE_SYSTEM: &str = "SYSTEM";
 
@@ -23,15 +23,15 @@ pub const XML_ELEMENT_START_END: &str = ">";
 pub const XML_ELEMENT_END_START: &str = "</";
 pub const XML_ELEMENT_END_END: &str = ">";
 
-pub const XML_EMPTY: &str = "";
+//pub const XML_EMPTY: &str = "";
 
 // ------------------------------------------------------------------------------------------------
 // ID/Ref Support
 // ------------------------------------------------------------------------------------------------
 
-pub const XML_DEFAULT_ID_ATTRIBUTE: &str = "id";
+//pub const XML_DEFAULT_ID_ATTRIBUTE: &str = "id";
 
-pub const XML_DEFAULT_IDREF_ATTRIBUTE: &str = "idref";
+//pub const XML_DEFAULT_IDREF_ATTRIBUTE: &str = "idref";
 
 // ------------------------------------------------------------------------------------------------
 // Namespace Support
