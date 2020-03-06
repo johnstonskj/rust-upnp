@@ -135,6 +135,7 @@ impl Name {
 
     fn check_part(part: &str) -> Result<String> {
         // below ranges are always valid for XML 1.0 documents
+        // from https://en.wikipedia.org/wiki/XML#Valid_characters
         if part.chars().all(|c| {
             c == '\u{0009}'
                 || c == '\u{000A}'

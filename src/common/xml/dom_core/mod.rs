@@ -5,7 +5,23 @@ A reasonably faithful implementation of the W3C [Document Object Model Core, Lev
 
 # Example
 
-TBD
+```rust
+use upnp_rs::dom_core::*;
+
+let mut document_node =
+    Implementation::create_document("uri:urn:simons:thing:1", "root", None).unwrap();
+
+let document = &document_node as &dyn Document;
+let root = document.create_element("root").unwrap();
+
+let mut root_node = document_node.append_child(root).unwrap();
+let root = &mut root_node as &mut dyn Element;
+root.set_attribute("version", "1.0");
+root.set_attribute("something", "else");
+
+let xml = document_node.to_string();
+println!("document 2: {}", xml);
+```
 
 # Specification
 
@@ -32,35 +48,37 @@ From the core documentation:
 > interfaces may contain additional and more convenient mechanisms to get and set the relevant
 > information.
 
-Rather than dealing with a lot of traits which may, or may not, be implemented by a common
-concrete type, this crate provides concrete types for a number of the core interfaces and instead
-of downcasting `Node` to `Element` say, the `Node` struct supports a set of `is_{node-type}`
-predicates and `as_{node-type}` functions.
 
-Wherever possible the documentation included with this module is taken from the specification
-documents listed above.
+
+Wherever possible the documentation included in sections headed **Specification**  is taken from
+the specification documents listed above.
 
 ## Interface Mapping
 
+The actual concrete types used in the DOM tree are [RefNode](type.RefNode.html)
+and [WeakRefNode](type.WeakRefNode.html) which in turn are references to the opaque
+[NodeImpl](struct.NodeImpl.html) struct. Only `RefNode` implements all of the DOM interfaces
+and in general the programmer should never need to interact with `WeakRefNode`.
+
 | IDL Interface           | Rust Mapping                                                |
 |-------------------------|-------------------------------------------------------------|
-| `Attr`                  | [Attribute](struct.Attribute.html)                          |
-| _`CharacterData`_       | [CharacterData](struct.CharacterData.html)                  |
-| `CDATASection`          | See _CharacterData_                                         |
-| `Comment`               | _CharacterData_                                             |
-| `Document`              | [Document](struct.Document.html)                            |
+| `Attr`                  | [Attribute](trait.Attribute.html)                           |
+| _`CharacterData`_       | [CharacterData](trait.CharacterData.html)                   |
+| `CDATASection`          | [CDataSection](trait.CDataSection.html)                     |
+| `Comment`               | [Document](trait.Document.html)                             |
+| `Document`              | [Document](trait.Document.html)                             |
 | `DocumentFragment`      | Not Supported                                               |
-| `DocumentType`          | [DocumentType](struct.DocumentType.html)                    |
-| `DOMImplementation`     | Not Supported                                               |
-| `Element`               | [Element](struct.Element.html)                              |
+| `DocumentType`          | [DocumentType](trait.DocumentType.html)                     |
+| `DOMImplementation`     | [Implementation](struct.Implementation.html)                |
+| `Element`               | [Element](trait.Element.html)                               |
 | `Entity`                | Not Supported                                               |
 | `EntityReference`       | Not Supported                                               |
-| `NamedNodeMap`          | `HashMap<String, Weak<NodeImpl>`                            |
-| `Node`                  | [Node](structNode..html)                                    |
-| `NodeList`              | `Vec<Rc<NodeImpl>>`                                         |
+| `NamedNodeMap`          | `HashMap<Name, RefNode>`                                    |
+| `Node`                  | [Node](trait.Node.html)                                     |
+| `NodeList`              | `Vec<Rc<RefNode>>`                                          |
 | `Notation`              | Not Supported                                               |
 | `ProcessingInstruction` | [ProcessingInstruction](struct.ProcessingInstruction.html)  |
-| `Text`                  | _CharacterData_                                             |
+| `Text`                  | [Text](trait.Text.html)                                     |
 
 * The exception type `DOMException` and associated constants are represented by the enumeration
   `Error`.
