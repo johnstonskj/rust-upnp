@@ -3,6 +3,7 @@ use regex::Regex;
 use std::collections::HashMap;
 use std::str::FromStr;
 
+
 pub fn check_required(headers: &HashMap<String, String>, required: &[&str]) -> Result<(), Error> {
     let missing_headers: Vec<String> = required
         .iter()
@@ -62,14 +63,12 @@ pub fn check_empty(header_value: &str, name: &str) -> Result<(), Error> {
     }
 }
 
-pub fn check_not_empty(header_value: &str, name: &str) -> Result<String, Error> {
+pub fn check_not_empty(header_entry: std::option::Option<&String>, default: &str) -> String {
+    let default_value = &default.to_string();
+    let header_value = header_entry.unwrap_or(default_value);
     if !header_value.trim().is_empty() {
-        Ok(header_value.to_string())
+        return header_value.to_string();
     } else {
-        error!(
-            "check_not_empty - header '{}', value '{}' should not be empty",
-            name, header_value
-        );
-        Err(Error::MessageFormat(MessageErrorKind::InvalidFieldValue))
+        return default_value.to_string();
     }
 }

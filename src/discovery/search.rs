@@ -478,24 +478,24 @@ impl TryFrom<MulticastResponse> for Response {
         )?;
 
         let date = headers::check_not_empty(
-            response.headers.get(protocol::HEAD_DATE).unwrap(),
-            protocol::HEAD_DATE,
-        )?;
+            response.headers.get(protocol::HEAD_DATE),
+            "Thu, 01 Jan 1970 00:00:00 GMT",
+        );
 
         let location = headers::check_not_empty(
-            response.headers.get(protocol::HEAD_LOCATION).unwrap(),
-            protocol::HEAD_LOCATION,
-        )?;
+            response.headers.get(protocol::HEAD_LOCATION),
+            "http://www.example.org",
+        );
 
         let service_name = headers::check_not_empty(
-            response.headers.get(protocol::HEAD_USN).unwrap(),
-            protocol::HEAD_USN,
-        )?;
+            response.headers.get(protocol::HEAD_USN),
+            "undefined",
+        );
 
         let search_target = headers::check_not_empty(
-            response.headers.get(protocol::HEAD_ST).unwrap(),
-            protocol::HEAD_ST,
-        )?;
+            response.headers.get(protocol::HEAD_ST),
+            "undefined",
+        );
 
         let mut boot_id = 0u64;
         let mut config_id: Option<u64> = None;
