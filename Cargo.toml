@@ -1,6 +1,6 @@
 [package]
 name = "upnp-rs"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Simon Johnston <johnstonskj@gmail.com>"]
 edition = "2018"
 description = "Rust crate providing basic Universal Plug and Play (UPnP) protocol implementations"
@@ -21,26 +21,26 @@ default = []
 command_line = ["human-panic", "structopt", "env_logger"]
 
 [dependencies]
-ipnetwork = "0.16"
+ipnetwork = "0.20"
 lazy_static = "1.4.0"
 log = "0.4.8"
-pnet = "0.25"
-quick-xml = "0.17"
+pnet = "0.31"
+quick-xml = "0.23"
 regex = "1.3.4"
 
 # `#![feature(non_exhaustive)]` may not be used on the stable release channel
 #uriparse = "0.6"
 
 # Command-Line feature dependencies
-env_logger = { optional = true, version = "0.7" }
+env_logger = { optional = true, version = "0.9" }
 human-panic = { optional = true, version = "1.0" }
 structopt = { optional = true, version = "0.3" }
 
 # HTTP fetch
-reqwest = { version = "0.10", features = ["blocking"] }
+reqwest = { version = "0.11", features = ["blocking"] }
 
 # HTTP serve
 #warp = "0.2"
 
 [dev-dependencies]
-env_logger = "0.7"
+env_logger = "0.9"
