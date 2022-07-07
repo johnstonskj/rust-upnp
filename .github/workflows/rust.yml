@@ -6,8 +6,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        # Removed Windows until Packet.lib issue can be fixed.
+        os: [ubuntu-latest, windows-latest macos-latest]
 
     runs-on: ${{ matrix.os }}
 
@@ -16,6 +15,13 @@ jobs:
 
       - name: Install dependencies
         run: rustup component add rustfmt
+
+      - name: Install Pcap
+        if: runner.os == 'Windows'
+        run: |
+               Invoke-WebRequest -UseBasicParsing https://www.winpcap.org/install/bin/WpdPack_4_1_2.zip -OutFile "${Env:TEMP}\wpd.zip"
+               Expand-Archive -LiteralPath "${Env:TEMP}\wpd.zip" -DestinationPath "${Env:TEMP}\wpd"
+               Move-Item -LiteralPath "${Env:TEMP}\wpd\WpdPack\Lib" -Destination lib
 
       - name: Format
         run: cargo fmt -- --check
