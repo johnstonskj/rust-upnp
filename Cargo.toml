@@ -39,10 +39,10 @@ tracing-subscriber = { optional = true, version = "0.3", features = ["env-filter
 [dev-dependencies]
 pretty_assertions = "1.2"
 
-[target.i686-pc-windows-gnu.Packet]
+[target.i686-pc-windows-msvc.packet]
 rustc-link-search = ["lib"]
 rustc-link-lib = [":Packet.lib"]
 
-[target.x86_64-pc-windows-gnu.Packet]
-rustc-link-search = ["lib"]
-rustc-link-lib = [":Packet64.lib"]
+[target.x86_64-pc-windows-msvc.packet]
+rustc-link-search = ["lib/x64"]
+rustc-link-lib = [":Packet.lib"]
