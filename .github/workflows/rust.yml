@@ -6,7 +6,8 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest]
+        # Removed Windows until Packet.lib issue can be fixed.
 
     runs-on: ${{ matrix.os }}
 
