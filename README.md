@@ -16,10 +16,10 @@ control points to search for, and devices to notify of, device and service avail
 
 ## Usage
 
-Add the following to your Cargo.toml; currently this crate has no optional features.
+Add the following to your `Cargo.toml`; currently this crate has no optional features.
 
 ```toml
-upnp-rs = "0.1"
+upnp-rs = "0.2"
 ```
 
 ## API
