@@ -62,6 +62,7 @@ on discovery messages to maintain compatibility with advances in minor versions.
 */
 
 use crate::{SpecVersion, UPNP_STRING};
+use os_version::{detect, OsVersion};
 use std::fmt::{Display, Error, Formatter};
 
 // ------------------------------------------------------------------------------------------------
@@ -116,8 +117,8 @@ const DEFAULT_PRODUCT_NAME: &str = env!("CARGO_PKG_NAME");
 const DEFAULT_PRODUCT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 lazy_static! {
-    static ref PLATFORM_NAME: String = os::platform_name();
-    static ref PLATFORM_VERSION: String = os::platform_version();
+    static ref PLATFORM_NAME: String = platform_name();
+    static ref PLATFORM_VERSION: String = platform_version();
 }
 
 impl Display for ProductVersion {
@@ -211,61 +212,35 @@ impl ProductVersions {
 }
 
 // ------------------------------------------------------------------------------------------------
+// Private Functions
+// ------------------------------------------------------------------------------------------------
+
+fn platform_name() -> String {
+    let version = detect().expect("Could not detect platform name/version");
+    match version {
+        OsVersion::Linux(v) => format!("linux/{}", v.distro),
+        OsVersion::MacOS(_) => "macos".to_string(),
+        OsVersion::Windows(_) => "windows".to_string(),
+        OsVersion::OpenBSD(_) => "OpenBSD".to_string(),
+        _ => panic!("Unknown or unsupported platform"),
+    }
+}
+
+fn platform_version() -> String {
+    let version = detect().expect("Could not detect platform name/version");
+    match version {
+        OsVersion::Linux(v) => v.version.expect("No version information for Linux"),
+        OsVersion::MacOS(v) => v.version,
+        OsVersion::Windows(v) => v.version,
+        OsVersion::OpenBSD(v) => v.version,
+        _ => panic!("Unknown or unsupported platform"),
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
 // Modules
 // ------------------------------------------------------------------------------------------------
 
 pub mod search;
 
 pub mod notify;
-
-// ------------------------------------------------------------------------------------------------
-
-#[cfg(target_os = "macos")]
-mod os {
-    use std::process::Command;
-
-    #[inline]
-    pub fn platform_name() -> String {
-        let cmd_output = Command::new("sw_vers")
-            .arg("-productName")
-            .output()
-            .expect("Couldn't find `sw_vers`");
-        let output_string = String::from_utf8(cmd_output.stdout).expect("Oh crap");
-        output_string.trim().to_string()
-    }
-
-    #[inline]
-    pub fn platform_version() -> String {
-        let cmd_output = Command::new("sw_vers")
-            .arg("-productVersion")
-            .output()
-            .expect("Couldn't find `sw_vers`");
-        let output_string = String::from_utf8(cmd_output.stdout).expect("Oh crap");
-        output_string.trim().to_string()
-    }
-}
-
-#[cfg(all(not(target_os = "macos"), target_family = "unix"))]
-mod os {
-    use std::process::Command;
-
-    #[inline]
-    pub fn platform_name() -> String {
-        let cmd_output = Command::new("uname")
-            .arg("-o")
-            .output()
-            .expect("Couldn't find `uname`");
-        let output_string = String::from_utf8(cmd_output.stdout).expect("Oh crap");
-        output_string.trim().to_string()
-    }
-
-    #[inline]
-    pub fn platform_version() -> String {
-        let cmd_output = Command::new("uname")
-            .arg("-r")
-            .output()
-            .expect("Couldn't find `uname`");
-        let output_string = String::from_utf8(cmd_output.stdout).expect("Oh crap");
-        output_string.trim().to_string()
-    }
-}

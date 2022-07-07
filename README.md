@@ -107,7 +107,8 @@ COMMANDS
 * Upgraded dependencies, especially [pnet](https://crates.io/crates/pnet)
   which had a reported vulnerability.
 * Moved all *protocol* constants into the `syntax` module.
-  
+* Using crate `os_version` for platform detection.
+
 **Version 0.1.0**
 
 * Ability to issue multicast non-caching search command, with parsed results.

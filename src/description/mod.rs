@@ -2,9 +2,9 @@
 This module implements the UPnP device and service descriptions using the UPnP template language.
 */
 use crate::discovery::search::SearchTarget;
-pub use crate::SpecVersion as TLSpecVersion;
+use crate::error::{invalid_value_for_type, unsupported_operation, Error};
 use crate::UPNP_DOMAIN;
-use std::fmt::{Display, Error, Formatter};
+use std::fmt::{Display, Error as FmtError, Formatter};
 
 // ------------------------------------------------------------------------------------------------
 // Public Types
@@ -65,7 +65,7 @@ impl TypeID {
         }
     }
 
-    pub fn device_from(st: SearchTarget) -> Result<Self, ()> {
+    pub fn device_from(st: SearchTarget) -> Result<Self, Error> {
         match st {
             SearchTarget::DeviceType(type_name) => {
                 let (name, version) = split_type_and_version(type_name)?;
@@ -75,11 +75,11 @@ impl TypeID {
                 let (name, version) = split_type_and_version(type_name)?;
                 Ok(TypeID::new_device_with_domain(domain, name, version))
             }
-            _ => Err(()),
+            _ => unsupported_operation(st.to_string()).into(),
         }
     }
 
-    pub fn service_from(st: SearchTarget) -> Result<Self, ()> {
+    pub fn service_from(st: SearchTarget) -> Result<Self, Error> {
         match st {
             SearchTarget::ServiceType(name) => {
                 let (name, version) = split_type_and_version(name)?;
@@ -89,7 +89,7 @@ impl TypeID {
                 let (name, version) = split_type_and_version(name)?;
                 Ok(TypeID::new_service_with_domain(domain, name, version))
             }
-            _ => Err(()),
+            _ => unsupported_operation(st.to_string()).into(),
         }
     }
 
@@ -102,7 +102,7 @@ impl TypeID {
 }
 
 impl Display for TypeID {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), FmtError> {
         match self {
             TypeID::Device {
                 domain,
@@ -126,9 +126,9 @@ impl Display for TypeID {
 // Private Functions
 // ------------------------------------------------------------------------------------------------
 
-fn split_type_and_version(type_name: String) -> Result<(String, String), ()> {
+fn split_type_and_version(type_name: String) -> Result<(String, String), Error> {
     match type_name.find(':') {
-        None => Err(()),
+        None => invalid_value_for_type("type_and_version", type_name).into(),
         Some(sep) => {
             let (name, ver) = type_name.split_at(sep);
             Ok((name.to_string(), ver.to_string()))

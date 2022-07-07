@@ -100,7 +100,7 @@ pub fn device_available(device: &mut Device, options: Options) -> Result<(), Err
         .add_header(HTTP_HEADER_NTS, NTS_ALIVE)
         .add_header(
             HTTP_HEADER_SERVER,
-            &user_agent_string(options.spec_version, &options.product_and_version),
+            &user_agent_string(options.spec_version, options.product_and_version.clone()),
         )
         .add_header(HTTP_HEADER_USN, &device.service_name.to_string());
 

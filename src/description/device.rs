@@ -86,7 +86,7 @@ impl<T: Write> Writable<T> for DeviceRoot {
         let root =
             start_ns_element(writer, XML_ELEM_ROOT, XML_NS_DEVICE, None).map_err(xml_error)?;
 
-        let _ = self.spec_version.write(writer)?;
+        self.spec_version.write(writer)?;
 
         text_element(
             writer,

@@ -207,7 +207,7 @@ pub fn search_once(options: Options) -> Result<Vec<Response>, Error> {
     if options.spec_version >= SpecVersion::V11 {
         message_builder.add_header(
             HTTP_HEADER_USER_AGENT,
-            &user_agent_string(options.spec_version, &options.product_and_version),
+            &user_agent_string(options.spec_version, options.product_and_version.clone()),
         );
     }
     // Headers added by 2.0 specification
@@ -277,7 +277,7 @@ pub fn search_once_to_device(
             .add_header(HTTP_HEADER_ST, &options.search_target.to_string())
             .add_header(
                 HTTP_HEADER_USER_AGENT,
-                &user_agent_string(options.spec_version, &options.product_and_version),
+                &user_agent_string(options.spec_version, options.product_and_version.clone()),
             );
 
         let raw_responses = multicast(&message_builder.into(), &device_address, &options.into())?;
