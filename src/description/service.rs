@@ -168,14 +168,16 @@ impl<T: Write> Writable<T> for StateVariable {
                 XML_ATTR_SEND_EVENTS,
                 if self.send_events { "yes" } else { "no" },
             )],
-        ).map_err(xml_error)?;
+        )
+        .map_err(xml_error)?;
 
         text_element(writer, XML_ELEM_NAME, self.name.as_bytes()).map_err(xml_error)?;
 
         text_element(writer, XML_ELEM_DATA_TYPE, self.data_type.as_bytes()).map_err(xml_error)?;
 
         if let Some(default_value) = &self.default_value {
-            text_element(writer, XML_ELEM_DEFAULT_VALUE, default_value.as_bytes()).map_err(xml_error)?;
+            text_element(writer, XML_ELEM_DEFAULT_VALUE, default_value.as_bytes())
+                .map_err(xml_error)?;
         }
 
         if let Some(allowed) = &self.allowed_values {
@@ -190,7 +192,8 @@ impl<T: Write> RootWritable<T> for Spcd {}
 
 impl<T: Write> Writable<T> for Spcd {
     fn write(&self, writer: &mut Writer<T>) -> Result<(), Error> {
-        let root = start_ns_element(writer, XML_ELEM_SPCD, XML_NS_SERVICE, None).map_err(xml_error)?;
+        let root =
+            start_ns_element(writer, XML_ELEM_SPCD, XML_NS_SERVICE, None).map_err(xml_error)?;
 
         self.spec_version.write(writer)?;
 
