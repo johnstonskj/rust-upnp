@@ -2,7 +2,6 @@
 name = "upnp-rs"
 version = "0.2.0"
 authors = ["Simon Johnston <johnstonskj@gmail.com>"]
-edition = "2018"
 description = "Provides basic Universal Plug and Play (UPnP) protocol implementations"
 keywords = ["networking", "protocol"]
 categories = ["network-programming", "parser-implementations"]
@@ -10,9 +9,10 @@ documentation = "https://docs.rs/upnp/"
 repository = "https://github.com/johnstonskj/rust-upnp.git"
 license = "MIT"
 readme = "README.md"
+edition = "2018"
+build = "build.rs"
 publish = true
 default-run = "upnp"
-build = "build.rs"
 
 [[bin]]
 name = "upnp"

@@ -81,19 +81,50 @@ for testing, but the search command can be used for general purpose discovery.
 The general form of the command is _network-options command command-options_, as shown below.
 
 ```bash
-USAGE
-    upnp [-v|--verbose]+ [--interface=] [--ip-version=] COMMAND
+upnp 0.2.0
+UPnP simple qery/discovery tool.
 
-COMMANDS
-    search [-s|--search-target=] [-d|--domain=] [-w|--max-wait=]
+USAGE:
+    upnp [FLAGS] [OPTIONS] <SUBCOMMAND>
+
+FLAGS:
+    -h, --help        Prints help information
+    -6, --use-ipv6    Use IPv6 instead of the default v4
+        --version     Prints version information
+    -v, --verbose     The level of logging to perform, from off to trace; the default is off
+
+OPTIONS:
+        --interface <interface>          The network interface name to bind to; the default is all
+    -V, --spec-version <spec-version>    The UPnP version to use, 1.0, 1.1, or 2.0; the default is 1.0
+
+SUBCOMMANDS:
+    help      Prints this message or the help of the given subcommand(s)
+    listen    Listen for device notifications
+    search    Issue a multicast search to find devices
 ```
 
 * `interface` this is the name of a local network interface such as `en0`.
-* `ip-version` denotes that the client should only use IP version 4 or 6.
-* `search-target` denotes the scope of the search, valid values are `all`, `root`, `device:`_`id`_, 
-  `device-type:`_`id`_, or `service-type:`_`id`_, 
-* `domain` a domain to use for device/service types other than the default `schemas-upnp-org`.
-* `max-wait` the wait time for replies, sent to devices to prevent message flooding.
+
+``` bash
+$ upnp search --help
+upnp-search 0.2.0
+Issue a multicast search to find devices
+
+USAGE:
+    upnp search [OPTIONS]
+
+FLAGS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+OPTIONS:
+    -d, --domain <domain>                  A domain to use in constructing device and service type targets; the default
+                                           is the UPnP domain
+    -w, --max-wait <max-wait>              The maximum wait time, in seconds, for devices to respond to multicast; the
+                                           default is 2
+    -s, --search-target <search-target>    The UPnP search target (all, root, device:{id}, device-type:{id}, service-
+                                           type:{id}); the default is root
+```
 
 ## Changes
 
