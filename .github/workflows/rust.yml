@@ -23,6 +23,10 @@ jobs:
                Expand-Archive -LiteralPath "${Env:TEMP}\wpd.zip" -DestinationPath "${Env:TEMP}\wpd"
                Move-Item -LiteralPath "${Env:TEMP}\wpd\WpdPack\Lib" -Destination lib
 
+      - name: Content
+        if: runner.os == 'Windows'
+        run: dir
+
       - name: Format
         run: cargo fmt -- --check
 
