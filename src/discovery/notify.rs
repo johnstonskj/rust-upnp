@@ -5,10 +5,17 @@ This module provides three functions that provide 1) device available, 2) device
 use crate::common::httpu::{multicast_once, Options as MulticastOptions, RequestBuilder};
 use crate::common::interface::IP;
 use crate::common::uri::{URI, URL};
-use crate::common::user_agent;
+use crate::common::user_agent::user_agent_string;
 use crate::discovery::search::SearchTarget;
-use crate::discovery::{protocol, ProductVersion};
-use crate::{Error, SpecVersion};
+use crate::discovery::ProductVersion;
+use crate::error::{unsupported_version, Error};
+use crate::syntax::{
+    HTTP_HEADER_BOOTID, HTTP_HEADER_CACHE_CONTROL, HTTP_HEADER_CONFIGID, HTTP_HEADER_HOST,
+    HTTP_HEADER_LOCATION, HTTP_HEADER_NEXT_BOOTID, HTTP_HEADER_NT, HTTP_HEADER_NTS,
+    HTTP_HEADER_SEARCH_PORT, HTTP_HEADER_SERVER, HTTP_HEADER_USN, HTTP_METHOD_NOTIFY,
+    MULTICAST_ADDRESS, NTS_ALIVE, NTS_BYE, NTS_UPDATE,
+};
+use crate::SpecVersion;
 
 // ------------------------------------------------------------------------------------------------
 // Public Types
@@ -81,41 +88,40 @@ components:
 */
 pub fn device_available(device: &mut Device, options: Options) -> Result<(), Error> {
     let next_boot_id = device.boot_id + 1;
-    let mut message_builder = RequestBuilder::new(protocol::METHOD_NOTIFY);
+    let mut message_builder = RequestBuilder::new(HTTP_METHOD_NOTIFY);
     message_builder
-        .add_header(protocol::HEAD_HOST, protocol::MULTICAST_ADDRESS)
+        .add_header(HTTP_HEADER_HOST, MULTICAST_ADDRESS)
         .add_header(
-            protocol::HEAD_CACHE_CONTROL,
+            HTTP_HEADER_CACHE_CONTROL,
             &format!("max-age={}", options.max_age),
         )
-        .add_header(protocol::HEAD_LOCATION, &device.location.to_string())
-        .add_header(protocol::HEAD_NT, &device.notification_type.to_string())
-        .add_header(protocol::HEAD_NTS, protocol::NTS_ALIVE)
+        .add_header(HTTP_HEADER_LOCATION, &device.location.to_string())
+        .add_header(HTTP_HEADER_NT, &device.notification_type.to_string())
+        .add_header(HTTP_HEADER_NTS, NTS_ALIVE)
         .add_header(
-            protocol::HEAD_SERVER,
-            &user_agent::make(&options.spec_version, &options.product_and_version),
+            HTTP_HEADER_SERVER,
+            &user_agent_string(options.spec_version, &options.product_and_version),
         )
-        .add_header(protocol::HEAD_USN, &device.service_name.to_string());
+        .add_header(HTTP_HEADER_USN, &device.service_name.to_string());
 
     if options.spec_version >= SpecVersion::V11 {
         message_builder
-            .add_header(protocol::HEAD_BOOTID, &device.boot_id.to_string())
-            .add_header(protocol::HEAD_CONFIGID, &device.config_id.to_string());
+            .add_header(HTTP_HEADER_BOOTID, &device.boot_id.to_string())
+            .add_header(HTTP_HEADER_CONFIGID, &device.config_id.to_string());
         if let Some(search_port) = &device.search_port {
-            message_builder.add_header(protocol::HEAD_SEARCH_PORT, &search_port.to_string());
+            message_builder.add_header(HTTP_HEADER_SEARCH_PORT, &search_port.to_string());
         }
     }
 
     if options.spec_version >= SpecVersion::V20 {
         if let Some(secure_location) = &device.secure_location {
-            message_builder
-                .add_header(protocol::HEAD_SECURE_LOCATION, &secure_location.to_string());
+            message_builder.add_header(HTTP_HEADER_USN, secure_location);
         }
     }
 
     multicast_once(
         &message_builder.into(),
-        &protocol::MULTICAST_ADDRESS.parse().unwrap(),
+        &MULTICAST_ADDRESS.parse().unwrap(),
         &options.into(),
     )?;
 
@@ -160,38 +166,38 @@ interface on which the advertisement is sent.
 */
 pub fn device_update(device: &mut Device, options: Options) -> Result<(), Error> {
     if options.spec_version == SpecVersion::V10 {
-        return Err(Error::Unsupported);
-    }
-    let next_boot_id = device.boot_id + 1;
-    let mut message_builder = RequestBuilder::new(protocol::METHOD_NOTIFY);
-    message_builder
-        .add_header(protocol::HEAD_HOST, protocol::MULTICAST_ADDRESS)
-        .add_header(protocol::HEAD_LOCATION, &device.location.to_string())
-        .add_header(protocol::HEAD_NT, &device.notification_type.to_string())
-        .add_header(protocol::HEAD_NTS, protocol::NTS_UPDATE)
-        .add_header(protocol::HEAD_USN, &device.service_name.to_string())
-        .add_header(protocol::HEAD_BOOTID, &device.boot_id.to_string())
-        .add_header(protocol::HEAD_NEXT_BOOTID, &next_boot_id.to_string())
-        .add_header(protocol::HEAD_CONFIGID, &device.config_id.to_string());
+        unsupported_version(options.spec_version).into()
+    } else {
+        let next_boot_id = device.boot_id + 1;
+        let mut message_builder = RequestBuilder::new(HTTP_METHOD_NOTIFY);
+        message_builder
+            .add_header(HTTP_HEADER_HOST, MULTICAST_ADDRESS)
+            .add_header(HTTP_HEADER_LOCATION, &device.location.to_string())
+            .add_header(HTTP_HEADER_NT, &device.notification_type.to_string())
+            .add_header(HTTP_HEADER_NTS, NTS_UPDATE)
+            .add_header(HTTP_HEADER_USN, &device.service_name.to_string())
+            .add_header(HTTP_HEADER_BOOTID, &device.boot_id.to_string())
+            .add_header(HTTP_HEADER_NEXT_BOOTID, &next_boot_id.to_string())
+            .add_header(HTTP_HEADER_CONFIGID, &device.config_id.to_string());
 
-    if let Some(search_port) = &device.search_port {
-        message_builder.add_header(protocol::HEAD_SEARCH_PORT, &search_port.to_string());
-    }
-
-    if options.spec_version >= SpecVersion::V20 {
-        if let Some(secure_location) = &device.secure_location {
-            message_builder
-                .add_header(protocol::HEAD_SECURE_LOCATION, &secure_location.to_string());
+        if let Some(search_port) = &device.search_port {
+            message_builder.add_header(HTTP_HEADER_SEARCH_PORT, &search_port.to_string());
         }
-    }
 
-    multicast_once(
-        &message_builder.into(),
-        &protocol::MULTICAST_ADDRESS.parse().unwrap(),
-        &options.into(),
-    )?;
-    device.boot_id = next_boot_id;
-    Ok(())
+        if options.spec_version >= SpecVersion::V20 {
+            if let Some(secure_location) = &device.secure_location {
+                message_builder.add_header(HTTP_HEADER_USN, secure_location);
+            }
+        }
+
+        multicast_once(
+            &message_builder.into(),
+            &MULTICAST_ADDRESS.parse().unwrap(),
+            &options.into(),
+        )?;
+        device.boot_id = next_boot_id;
+        Ok(())
+    }
 }
 
 /**
@@ -220,22 +226,22 @@ request must have method `NOTIFY` and `ssdp:byeby`e in the `NTS` header in the f
 */
 pub fn device_unavailable(device: &mut Device, options: Options) -> Result<(), Error> {
     let next_boot_id = device.boot_id + 1;
-    let mut message_builder = RequestBuilder::new(protocol::METHOD_NOTIFY);
+    let mut message_builder = RequestBuilder::new(HTTP_METHOD_NOTIFY);
     message_builder
-        .add_header(protocol::HEAD_HOST, protocol::MULTICAST_ADDRESS)
-        .add_header(protocol::HEAD_NT, &device.notification_type.to_string())
-        .add_header(protocol::HEAD_NTS, protocol::NTS_BYE)
-        .add_header(protocol::HEAD_USN, &device.service_name.to_string());
+        .add_header(HTTP_HEADER_HOST, MULTICAST_ADDRESS)
+        .add_header(HTTP_HEADER_NT, &device.notification_type.to_string())
+        .add_header(HTTP_HEADER_NTS, NTS_BYE)
+        .add_header(HTTP_HEADER_USN, &device.service_name.to_string());
 
     if options.spec_version >= SpecVersion::V11 {
         message_builder
-            .add_header(protocol::HEAD_BOOTID, &device.boot_id.to_string())
-            .add_header(protocol::HEAD_CONFIGID, &device.config_id.to_string());
+            .add_header(HTTP_HEADER_BOOTID, &device.boot_id.to_string())
+            .add_header(HTTP_HEADER_CONFIGID, &device.config_id.to_string());
     }
 
     multicast_once(
         &message_builder.into(),
-        &protocol::MULTICAST_ADDRESS.parse().unwrap(),
+        &MULTICAST_ADDRESS.parse().unwrap(),
         &options.into(),
     )?;
     device.boot_id = next_boot_id;
@@ -246,13 +252,15 @@ pub fn device_unavailable(device: &mut Device, options: Options) -> Result<(), E
 // Implementations
 // ------------------------------------------------------------------------------------------------
 
+const CACHE_CONTROL_MAX_AGE: u16 = 1800;
+
 impl Options {
     pub fn default_for(spec_version: SpecVersion) -> Self {
         Options {
-            spec_version: spec_version.clone(),
+            spec_version,
             network_interface: None,
             network_version: None,
-            max_age: 1800,
+            max_age: CACHE_CONTROL_MAX_AGE,
             packet_ttl: if spec_version == SpecVersion::V10 {
                 4
             } else {
@@ -265,10 +273,11 @@ impl Options {
 
 impl From<Options> for MulticastOptions {
     fn from(options: Options) -> Self {
-        let mut multicast_options = MulticastOptions::default();
-        multicast_options.network_interface = options.network_interface;
-        multicast_options.network_version = options.network_version;
-        multicast_options.packet_ttl = options.packet_ttl;
-        multicast_options
+        MulticastOptions {
+            network_interface: options.network_interface,
+            network_version: options.network_version,
+            packet_ttl: options.packet_ttl,
+            ..Default::default()
+        }
     }
 }

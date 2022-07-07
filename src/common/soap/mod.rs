@@ -1,4 +1,5 @@
 use crate::description::TypeID;
+use crate::syntax::{SOAP_NS_ENCODING, SOAP_NS_ENVELOPE};
 /**
 
 ```http
@@ -35,7 +36,7 @@ pub struct Action {
 }
 
 #[derive(Clone, Debug)]
-enum Body {
+pub enum Body {
     Action {
         action: Action,
         argumments: HashMap<String, String>,
@@ -54,8 +55,11 @@ enum Body {
 
 #[derive(Clone, Debug)]
 pub struct Envelope {
+    #[allow(dead_code)]
     schema: String,
+    #[allow(dead_code)]
     encoding_style: String,
+    #[allow(dead_code)]
     body: Body,
 }
 
@@ -91,16 +95,16 @@ impl Envelope {
 
     pub fn new_with(action: Action, argumments: HashMap<String, String>) -> Self {
         Envelope {
-            schema: protocol::SCHEMA_ENVELOPE.to_string(),
-            encoding_style: protocol::ENCODING_STYLE.to_string(),
+            schema: SOAP_NS_ENVELOPE.to_string(),
+            encoding_style: SOAP_NS_ENCODING.to_string(),
             body: Body::Action { action, argumments },
         }
     }
 
     pub fn new_response(action: Action, argumments: HashMap<String, String>) -> Self {
         Envelope {
-            schema: protocol::SCHEMA_ENVELOPE.to_string(),
-            encoding_style: protocol::ENCODING_STYLE.to_string(),
+            schema: SOAP_NS_ENVELOPE.to_string(),
+            encoding_style: SOAP_NS_ENCODING.to_string(),
             body: Body::Response { action, argumments },
         }
     }
@@ -113,5 +117,3 @@ impl Envelope {
 // ------------------------------------------------------------------------------------------------
 // Modules
 // ------------------------------------------------------------------------------------------------
-
-mod protocol;

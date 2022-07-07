@@ -1,15 +1,9 @@
 use human_panic::setup_panic;
-use log::LevelFilter;
 use std::str::FromStr;
 use structopt::StructOpt;
+use tracing::info;
 use upnp_rs::discovery::search::*;
 use upnp_rs::SpecVersion;
-
-#[macro_use]
-extern crate env_logger;
-
-#[macro_use]
-extern crate log;
 
 // ------------------------------------------------------------------------------------------------
 // Public Types
@@ -145,20 +139,34 @@ pub fn main() {
 // ------------------------------------------------------------------------------------------------
 
 fn init_tracing(verbosity: i8) {
-    env_logger::Builder::from_default_env()
-        .filter_module(
-            module_path!(),
-            match verbosity {
-                0 => LevelFilter::Off,
-                1 => LevelFilter::Error,
-                2 => LevelFilter::Warn,
-                3 => LevelFilter::Info,
-                4 => LevelFilter::Debug,
-                _ => LevelFilter::Trace,
-            },
+    use tracing_subscriber::filter::LevelFilter;
+    use tracing_subscriber::{EnvFilter, FmtSubscriber};
+
+    let log_level = match verbosity {
+        0 => LevelFilter::OFF,
+        1 => LevelFilter::ERROR,
+        2 => LevelFilter::WARN,
+        3 => LevelFilter::INFO,
+        4 => LevelFilter::DEBUG,
+        _ => LevelFilter::TRACE,
+    };
+
+    let filter = EnvFilter::from_default_env()
+        .add_directive(
+            format!("{}={}", module_path!(), log_level)
+                .parse()
+                .expect("Issue with command-line trace directive"),
         )
-        .init();
-    info!("Max log filter level set to {:?}", log::max_level());
+        .add_directive(
+            format!("upnp={}", log_level)
+                .parse()
+                .expect("Issue with library trace directive"),
+        );
+    let subscriber = FmtSubscriber::builder().with_env_filter(filter).finish();
+
+    tracing::subscriber::set_global_default(subscriber)
+        .expect("Unable to set global default tracing subscriber");
+    info!("Log level set to `LevelFilter::{:?}`", log_level);
 }
 
 fn parse_version(version: Option<String>) -> SpecVersion {
@@ -234,9 +242,12 @@ Search parameters
         Ok(responses) => {
             for response in responses.iter() {
                 println!("\n**[{}]({})**\n", response.service_name, response.location);
-                println!("* Product Version: {}", response.versions.product);
-                println!("* UPnP Version:    {}", response.versions.upnp);
-                println!("* O/S Version:     {}", response.versions.operating_system);
+                println!("* Product Version: {}", response.versions.product_version());
+                println!("* UPnP Version:    {}", response.versions.upnp_version());
+                println!(
+                    "* O/S Version:     {}",
+                    response.versions.platform_version()
+                );
             }
         }
         Err(error) => {

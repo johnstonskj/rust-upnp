@@ -1,10 +1,13 @@
-use crate::{Error, MessageErrorKind};
+use crate::error::{invalid_header_value, missing_required_header, MessageFormatError};
 use regex::Regex;
 use std::collections::HashMap;
 use std::str::FromStr;
+use tracing::error;
 
-
-pub fn check_required(headers: &HashMap<String, String>, required: &[&str]) -> Result<(), Error> {
+pub fn check_required(
+    headers: &HashMap<String, String>,
+    required: &[&str],
+) -> Result<(), MessageFormatError> {
     let missing_headers: Vec<String> = required
         .iter()
         .cloned()
@@ -18,40 +21,42 @@ pub fn check_required(headers: &HashMap<String, String>, required: &[&str]) -> R
             "check_required - message missing headers '{:?}'",
             missing_headers
         );
-        Err(Error::MessageFormat(MessageErrorKind::MissingRequiredField))
+        missing_required_header(missing_headers.join(", ")).into()
     }
 }
 
-pub fn check_parsed_value<T>(header_value: &str, name: &str) -> Result<T, Error>
+pub fn check_parsed_value<T>(header_value: &str, name: &str) -> Result<T, MessageFormatError>
 where
     T: FromStr,
 {
-    match header_value.parse::<T>() {
-        Ok(v) => Ok(v),
-        Err(_) => {
-            error!(
-                "check_parsed_value - header '{}', value '{}' could not be parsed",
-                name, header_value
-            );
-            Err(Error::MessageFormat(MessageErrorKind::InvalidFieldValue))
-        }
+    if let Ok(v) = header_value.parse::<T>() {
+        Ok(v)
+    } else {
+        error!(
+            "check_parsed_value - header '{}', value '{}' could not be parsed",
+            name, header_value
+        );
+        invalid_header_value(name, header_value).into()
     }
 }
 
-pub fn check_regex(header_value: &str, name: &str, regex: &Regex) -> Result<String, Error> {
-    match regex.captures(&header_value) {
-        Some(captured) => Ok(captured.get(1).unwrap().as_str().to_string()),
-        None => {
-            error!(
-                "check_regex - header '{}', value '{}' did not match regex",
-                name, header_value
-            );
-            Err(Error::MessageFormat(MessageErrorKind::InvalidFieldValue))
-        }
+pub fn check_regex(
+    header_value: &str,
+    name: &str,
+    regex: &Regex,
+) -> Result<String, MessageFormatError> {
+    if let Some(captured) = regex.captures(header_value) {
+        Ok(captured.get(1).unwrap().as_str().to_string())
+    } else {
+        error!(
+            "check_regex - header '{}', value '{}' did not match regex",
+            name, header_value
+        );
+        invalid_header_value(name, header_value).into()
     }
 }
 
-pub fn check_empty(header_value: &str, name: &str) -> Result<(), Error> {
+pub fn check_empty(header_value: &str, name: &str) -> Result<(), MessageFormatError> {
     if header_value.trim().is_empty() {
         Ok(())
     } else {
@@ -59,16 +64,16 @@ pub fn check_empty(header_value: &str, name: &str) -> Result<(), Error> {
             "check_empty - header '{}', value '{}' should be empty",
             name, header_value
         );
-        Err(Error::MessageFormat(MessageErrorKind::InvalidFieldValue))
+        invalid_header_value(name, header_value).into()
     }
 }
 
 pub fn check_not_empty(header_entry: std::option::Option<&String>, default: &str) -> String {
-    let default_value = &default.to_string();
-    let header_value = header_entry.unwrap_or(default_value);
+    let default_value = default.to_string();
+    let header_value = header_entry.unwrap_or(&default_value);
     if !header_value.trim().is_empty() {
-        return header_value.to_string();
+        header_value.to_string()
     } else {
-        return default_value.to_string();
+        default_value
     }
 }

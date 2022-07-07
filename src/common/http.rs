@@ -1,5 +1,6 @@
-use crate::Error;
-use reqwest::{blocking::Client, Error as HTTPError};
+use crate::error::{unsupported_operation, Error};
+use reqwest::blocking::Client;
+use tracing::info;
 
 pub fn fetch<T>(url: String) -> Result<T, Error> {
     let client = Client::new();
@@ -10,12 +11,5 @@ pub fn fetch_with<T>(url: String, client: &Client) -> Result<T, Error> {
     info!("fetch_with - fetching {}", url);
     let response = client.get(&url).send()?;
     info!("fetch_with - received {:?}", &response);
-    Err(Error::Unsupported)
-}
-
-impl From<HTTPError> for Error {
-    fn from(e: HTTPError) -> Self {
-        error!("HTTP error: {:?}", e);
-        Error::Messaging
-    }
+    unsupported_operation(url).into()
 }

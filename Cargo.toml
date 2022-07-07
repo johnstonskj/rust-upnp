@@ -1,9 +1,9 @@
 [package]
 name = "upnp-rs"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Simon Johnston <johnstonskj@gmail.com>"]
 edition = "2018"
-description = "Rust crate providing basic Universal Plug and Play (UPnP) protocol implementations"
+description = "Provides basic Universal Plug and Play (UPnP) protocol implementations"
 documentation = "https://docs.rs/upnp/"
 repository = "https://github.com/johnstonskj/rust-upnp.git"
 license = "MIT"
@@ -18,29 +18,22 @@ required-features = ["command_line"]
 
 [features]
 default = []
-command_line = ["human-panic", "structopt", "env_logger"]
+command_line = ["human-panic", "structopt", "tracing-subscriber"]
 
 [dependencies]
 ipnetwork = "0.20"
 lazy_static = "1.4.0"
-log = "0.4.8"
-pnet = "0.31"
+pnet = {version = "0.31", features = ["std"] }
 quick-xml = "0.23"
-regex = "1.3.4"
+regex = "1.3"
+reqwest = { version = "0.11", features = ["blocking"] }
+thiserror = "1.0"
+tracing = "0.1"
 
-# `#![feature(non_exhaustive)]` may not be used on the stable release channel
-#uriparse = "0.6"
-
-# Command-Line feature dependencies
-env_logger = { optional = true, version = "0.9" }
+# Command-Line fature dependencies
 human-panic = { optional = true, version = "1.0" }
 structopt = { optional = true, version = "0.3" }
-
-# HTTP fetch
-reqwest = { version = "0.11", features = ["blocking"] }
-
-# HTTP serve
-#warp = "0.2"
+tracing-subscriber = { optional = true, version = "0.3", features = ["env-filter"] }
 
 [dev-dependencies]
-env_logger = "0.9"
+pretty_assertions = "1.2"

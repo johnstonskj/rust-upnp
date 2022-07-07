@@ -4,11 +4,13 @@ components.
 */
 
 use crate::common::interface;
-use crate::Error;
+use crate::common::interface::IP;
+use crate::error::{invalid_socket_value, Error};
 use std::convert::TryFrom;
 use std::io::ErrorKind as IOErrorKind;
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6, UdpSocket};
 use std::time::Duration;
+use tracing::{debug, error, trace};
 
 // ------------------------------------------------------------------------------------------------
 // Public Types
@@ -18,28 +20,23 @@ use std::time::Duration;
 
 #[derive(Clone, Debug)]
 pub struct Options {
-    pub network_interface: Option<String>,
-    pub network_version: Option<IP>,
-    pub local_port: u16,
-    pub recv_timeout: u64,
-    pub packet_ttl: u32,
-    pub local_network_only: bool,
-    pub loop_back_also: bool,
+    pub(crate) network_interface: Option<String>,
+    pub(crate) network_version: Option<IP>,
+    pub(crate) local_port: u16,
+    pub(crate) recv_timeout: u64,
+    pub(crate) packet_ttl: u32,
+    pub(crate) local_network_only: bool,
+    pub(crate) loop_back_also: bool,
     //    pub callback: Option<CallbackFn>,
 }
+
+pub const DEFAULT_BUFFER_SIZE: usize = 1500;
+
+pub const DEFAULT_RECV_TIMEOUT: u64 = 2;
 
 // ------------------------------------------------------------------------------------------------
 // Public Functions
 // ------------------------------------------------------------------------------------------------
-
-//pub fn send(message: &Request, options: &Options) -> Result<Response, Error> {}
-//
-//pub fn send_using(
-//    message: &Request,
-//    options: &Options,
-//    socket: &UdpSocket,
-//) -> Result<Response, Error> {
-//}
 
 pub fn create_multicast_socket(
     to_address: &SocketAddr,
@@ -76,14 +73,20 @@ pub fn create_multicast_socket(
     socket.set_read_timeout(Some(Duration::from_secs(options.recv_timeout)))?;
     match (to_address, local_address) {
         (SocketAddr::V4(to_address), SocketAddr::V4(local_address)) => {
-            socket.join_multicast_v4(to_address.ip(), &local_address.ip())?;
+            socket.join_multicast_v4(to_address.ip(), local_address.ip())?;
             socket.set_multicast_ttl_v4(if options.local_network_only { 1 } else { 10 })?;
             socket.set_multicast_loop_v4(options.loop_back_also)?;
         }
         (SocketAddr::V6(_), SocketAddr::V6(_)) => {
             socket.set_multicast_loop_v6(options.loop_back_also)?;
         }
-        _ => return Err(Error::Unsupported),
+        _ => {
+            return invalid_socket_value(
+                "to, local",
+                &format!("{}, {}", to_address, local_address),
+            )
+            .into();
+        }
     }
 
     trace!(
@@ -127,10 +130,10 @@ pub fn multicast_using(
     let mut responses: Vec<Response> = Default::default();
 
     loop {
-        let mut buf = [0u8; protocol::BUFFER_SIZE];
+        let mut buf = [0u8; DEFAULT_BUFFER_SIZE];
         trace!(
             "multicast_using - blocking on recv_from, buffer size {}",
-            protocol::BUFFER_SIZE
+            DEFAULT_BUFFER_SIZE
         );
         match socket.recv_from(&mut buf) {
             Ok((received, from)) => {
@@ -147,7 +150,7 @@ pub fn multicast_using(
                     break;
                 } else {
                     error!("multicast_using - socket read returned error: {:?}", e);
-                    return Err(Error::NetworkTransport(e.kind()));
+                    return Err(Error::NetworkTransport(e));
                 }
             }
         }
@@ -173,7 +176,7 @@ impl Default for Options {
             network_interface: None,
             network_version: None,
             local_port: 0,
-            recv_timeout: protocol::DEFAULT_TIMEOUT,
+            recv_timeout: DEFAULT_RECV_TIMEOUT,
             packet_ttl: 2,
             local_network_only: false,
             loop_back_also: false,
@@ -201,14 +204,14 @@ fn multicast_send_using(
 // Modules
 // ------------------------------------------------------------------------------------------------
 
+#[doc(hidden)]
 mod builder;
 pub use builder::RequestBuilder;
 
+#[doc(hidden)]
 mod request;
 pub use request::Request;
 
+#[doc(hidden)]
 mod response;
-use crate::common::interface::IP;
 pub use response::Response;
-
-mod protocol;

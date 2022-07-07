@@ -97,6 +97,17 @@ COMMANDS
 
 ## Changes
 
+**Version 0.2.0**
+
+* Rewritten error handling to have more discrete errors and better reporting.
+* Moved from [log](https://crates.io/crates/log) and
+  [env_logger](https://crates.io/crates/env_logger) to
+  [tracing](https://crates.io/crates/tracing) and
+  [tracing_subscriber](https://crates.io/crates/tracing_subscriber).
+* Upgraded dependencies, especially [pnet](https://crates.io/crates/pnet)
+  which had a reported vulnerability.
+* Moved all *protocol* constants into the `syntax` module.
+  
 **Version 0.1.0**
 
 * Ability to issue multicast non-caching search command, with parsed results.
@@ -108,4 +119,4 @@ COMMANDS
 1. Finish parsing search results.
 2. Support listening for notifications.
 3. Support fetching device details.
-4. Support for sending notifications.
+    4. Support for sending notifications.

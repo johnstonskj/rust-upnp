@@ -8,14 +8,26 @@ with any (non-expired) previously cached responses.
 TBD
 
 */
+use crate::common::headers;
 use crate::common::httpu::{
     multicast, Options as MulticastOptions, RequestBuilder, Response as MulticastResponse,
 };
 use crate::common::interface::IP;
 use crate::common::uri::{URI, URL};
-use crate::common::{headers, user_agent};
-use crate::discovery::{protocol, ControlPoint, ProductVersion, ProductVersions};
-use crate::{Error, MessageErrorKind, SpecVersion};
+use crate::common::user_agent::user_agent_string;
+use crate::discovery::{ControlPoint, ProductVersion, ProductVersions};
+use crate::error::{
+    invalid_field_value, invalid_header_value, invalid_value_for_type, missing_required_field,
+    unsupported_operation, unsupported_version, Error, MessageFormatError,
+};
+use crate::syntax::{
+    HTTP_EXTENSION, HTTP_HEADER_BOOTID, HTTP_HEADER_CACHE_CONTROL, HTTP_HEADER_CONFIGID,
+    HTTP_HEADER_CP_FN, HTTP_HEADER_CP_UUID, HTTP_HEADER_DATE, HTTP_HEADER_EXT, HTTP_HEADER_HOST,
+    HTTP_HEADER_LOCATION, HTTP_HEADER_MAN, HTTP_HEADER_MX, HTTP_HEADER_SEARCH_PORT,
+    HTTP_HEADER_SERVER, HTTP_HEADER_ST, HTTP_HEADER_TCP_PORT, HTTP_HEADER_USER_AGENT,
+    HTTP_HEADER_USN, HTTP_METHOD_SEARCH, MULTICAST_ADDRESS,
+};
+use crate::SpecVersion;
 use regex::Regex;
 use std::borrow::Borrow;
 use std::collections::HashMap;
@@ -24,6 +36,7 @@ use std::fmt::{Display, Error as FmtError, Formatter};
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::time::{Duration, SystemTime};
+use tracing::{error, info, trace};
 
 // ------------------------------------------------------------------------------------------------
 // Public Types
@@ -61,6 +74,7 @@ pub enum SearchTarget {
 /// if false no further responses are processed and the search will only return results
 /// until this last one.
 ///
+#[allow(dead_code)]
 type CallbackFn = fn(&Response) -> bool;
 
 ///
@@ -102,6 +116,7 @@ pub struct Options {
 #[derive(Clone, Debug)]
 struct CachedResponse {
     response: Response,
+    #[allow(dead_code)]
     expiration: SystemTime,
 }
 
@@ -110,7 +125,9 @@ struct CachedResponse {
 ///
 #[derive(Clone, Debug)]
 pub struct ResponseCache {
+    #[allow(dead_code)]
     options: Options,
+    #[allow(dead_code)]
     minimum_refresh: Duration,
     last_updated: SystemTime,
     responses: Vec<CachedResponse>,
@@ -156,7 +173,7 @@ pub struct Response {
 pub fn search(options: Options) -> Result<ResponseCache, Error> {
     info!("search - options: {:?}", options);
     options.validate()?;
-    Err(Error::Unsupported)
+    unsupported_operation("search").into()
 }
 
 ///
@@ -179,42 +196,42 @@ pub fn search(options: Options) -> Result<ResponseCache, Error> {
 pub fn search_once(options: Options) -> Result<Vec<Response>, Error> {
     info!("search_once - options: {:?}", options);
     options.validate()?;
-    let mut message_builder = RequestBuilder::new(protocol::METHOD_SEARCH);
+    let mut message_builder = RequestBuilder::new(HTTP_METHOD_SEARCH);
     // All headers from the original 1.0 specification.
     message_builder
-        .add_header(protocol::HEAD_HOST, protocol::MULTICAST_ADDRESS)
-        .add_header(protocol::HEAD_MAN, protocol::HTTP_EXTENSION)
-        .add_header(protocol::HEAD_MX, &format!("{}", options.max_wait_time))
-        .add_header(protocol::HEAD_ST, &options.search_target.to_string());
+        .add_header(HTTP_HEADER_HOST, MULTICAST_ADDRESS)
+        .add_header(HTTP_HEADER_MAN, HTTP_EXTENSION)
+        .add_header(HTTP_HEADER_MX, &format!("{}", options.max_wait_time))
+        .add_header(HTTP_HEADER_ST, &options.search_target.to_string());
     // Headers added by 1.1 specification
     if options.spec_version >= SpecVersion::V11 {
         message_builder.add_header(
-            protocol::HEAD_USER_AGENT,
-            &user_agent::make(&options.spec_version, &options.product_and_version),
+            HTTP_HEADER_USER_AGENT,
+            &user_agent_string(options.spec_version, &options.product_and_version),
         );
     }
     // Headers added by 2.0 specification
     if options.spec_version >= SpecVersion::V20 {
         match &options.control_point {
             Some(cp) => {
-                message_builder.add_header(protocol::HEAD_CP_FN, &cp.friendly_name);
+                message_builder.add_header(HTTP_HEADER_CP_FN, &cp.friendly_name);
                 if let Some(uuid) = &cp.uuid {
-                    message_builder.add_header(protocol::HEAD_CP_UUID, &uuid);
+                    message_builder.add_header(HTTP_HEADER_CP_UUID, uuid);
                 }
                 if let Some(port) = cp.port {
-                    message_builder.add_header(protocol::HEAD_TCP_PORT, &port.to_string());
+                    message_builder.add_header(HTTP_HEADER_TCP_PORT, &port.to_string());
                 }
             }
             None => {
                 error!("search_once - missing control point, required for UPnP/2.0");
-                return Err(Error::MessageFormat(MessageErrorKind::MissingRequiredField));
+                return missing_required_field("control_point").into();
             }
         }
     }
     trace!("search_once - {:?}", &message_builder);
     let raw_responses = multicast(
         &message_builder.into(),
-        &protocol::MULTICAST_ADDRESS.parse().unwrap(),
+        &MULTICAST_ADDRESS.parse().unwrap(),
         &options.into(),
     )?;
 
@@ -253,14 +270,14 @@ pub fn search_once_to_device(
     );
     options.validate()?;
     if options.spec_version >= SpecVersion::V11 {
-        let mut message_builder = RequestBuilder::new(protocol::METHOD_SEARCH);
+        let mut message_builder = RequestBuilder::new(HTTP_METHOD_SEARCH);
         message_builder
-            .add_header(protocol::HEAD_HOST, protocol::MULTICAST_ADDRESS)
-            .add_header(protocol::HEAD_MAN, protocol::HTTP_EXTENSION)
-            .add_header(protocol::HEAD_ST, &options.search_target.to_string())
+            .add_header(HTTP_HEADER_HOST, MULTICAST_ADDRESS)
+            .add_header(HTTP_HEADER_MAN, HTTP_EXTENSION)
+            .add_header(HTTP_HEADER_ST, &options.search_target.to_string())
             .add_header(
-                protocol::HEAD_USER_AGENT,
-                &user_agent::make(&options.spec_version, &options.product_and_version),
+                HTTP_HEADER_USER_AGENT,
+                &user_agent_string(options.spec_version, &options.product_and_version),
             );
 
         let raw_responses = multicast(&message_builder.into(), &device_address, &options.into())?;
@@ -271,7 +288,7 @@ pub fn search_once_to_device(
         }
         Ok(responses)
     } else {
-        Err(Error::Unsupported)
+        unsupported_version(options.spec_version).into()
     }
 }
 
@@ -302,7 +319,7 @@ impl Display for SearchTarget {
 }
 
 impl FromStr for SearchTarget {
-    type Err = ();
+    type Err = MessageFormatError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         lazy_static! {
@@ -313,14 +330,14 @@ impl FromStr for SearchTarget {
             Ok(SearchTarget::All)
         } else if s == "upnp:rootdevice" {
             Ok(SearchTarget::RootDevice)
-        } else if s.starts_with("uuid:") {
-            Ok(SearchTarget::Device(s[5..].to_string()))
-        } else if s.starts_with("urn:schemas-upnp-org:device:") {
-            Ok(SearchTarget::DeviceType(s[28..].to_string()))
-        } else if s.starts_with("urn:schemas-upnp-org:service:") {
-            Ok(SearchTarget::ServiceType(s[29..].to_string()))
-        } else if s.starts_with("urn:") {
-            match DOMAIN_URN.captures(s) {
+        } else if let Some(device) = s.strip_prefix("uuid:") {
+            Ok(SearchTarget::Device(device.to_string()))
+        } else if let Some(device_type) = s.strip_prefix("urn:schemas-upnp-org:device:") {
+            Ok(SearchTarget::DeviceType(device_type.to_string()))
+        } else if let Some(service_type) = s.strip_prefix("urn:schemas-upnp-org:service:") {
+            Ok(SearchTarget::ServiceType(service_type.to_string()))
+        } else if let Some(domain) = s.strip_prefix("urn:") {
+            match DOMAIN_URN.captures(domain) {
                 Some(captures) => {
                     if captures.get(2).unwrap().as_str() == "device" {
                         Ok(SearchTarget::DomainDeviceType(
@@ -336,12 +353,12 @@ impl FromStr for SearchTarget {
                 }
                 None => {
                     error!("Could not parse URN '{}'", s);
-                    Err(())
+                    invalid_value_for_type("URN", s).into()
                 }
             }
         } else {
             error!("Could not parse '{}' as a search target", s);
-            Err(())
+            invalid_value_for_type("SearchTarget", s).into()
         }
     }
 }
@@ -354,7 +371,7 @@ impl Options {
     ///
     pub fn default_for(spec_version: SpecVersion) -> Self {
         Options {
-            spec_version: spec_version.clone(),
+            spec_version,
             network_interface: None,
             network_version: None,
             search_target: SearchTarget::RootDevice,
@@ -374,7 +391,7 @@ impl Options {
     ///
     pub fn for_control_point(control_point: ControlPoint) -> Self {
         let mut new = Self::default_for(SpecVersion::V20);
-        new.control_point = Some(control_point.clone());
+        new.control_point = Some(control_point);
         new
     }
 
@@ -390,7 +407,7 @@ impl Options {
                 "validate - max_wait_time must be between 1..120 ({})",
                 self.max_wait_time
             );
-            return Err(Error::MessageFormat(MessageErrorKind::InvalidFieldValue));
+            return invalid_field_value("max_wait_time", &self.max_wait_time.to_string()).into();
         }
         if self.spec_version >= SpecVersion::V11 {
             if let Some(user_agent) = &self.product_and_version {
@@ -399,18 +416,19 @@ impl Options {
                         "validate - user_agent needs to match 'ProductName/Version' ({:?})",
                         user_agent
                     );
-                    return Err(Error::MessageFormat(MessageErrorKind::InvalidFieldValue));
+                    return invalid_field_value("UserAgent", &user_agent.to_string()).into();
                 }
             }
         }
         if self.spec_version >= SpecVersion::V20 {
             if self.control_point.is_none() {
                 error!("validate - control_point required");
-                return Err(Error::MessageFormat(MessageErrorKind::InvalidFieldValue));
+                return missing_required_field("ControlPoint").into();
             } else if let Some(control_point) = &self.control_point {
                 if control_point.friendly_name.is_empty() {
                     error!("validate - control_point.friendly_name required");
-                    return Err(Error::MessageFormat(MessageErrorKind::InvalidFieldValue));
+                    return invalid_field_value("ControlPoint", &control_point.friendly_name)
+                        .into();
                 }
             }
         }
@@ -420,25 +438,25 @@ impl Options {
 
 impl From<Options> for MulticastOptions {
     fn from(options: Options) -> Self {
-        let mut multicast_options = MulticastOptions::default();
-        multicast_options.network_interface = options.network_interface;
-        multicast_options.network_version = options.network_version;
-        multicast_options.packet_ttl = options.packet_ttl;
-        multicast_options.recv_timeout = options.max_wait_time as u64;
-        multicast_options
+        MulticastOptions {
+            network_interface: options.network_interface,
+            network_version: options.network_version,
+            packet_ttl: options.packet_ttl,
+            recv_timeout: options.max_wait_time as u64,
+            ..Default::default()
+        }
     }
 }
-
 // ------------------------------------------------------------------------------------------------
 
 const REQUIRED_HEADERS_V10: [&str; 7] = [
-    protocol::HEAD_CACHE_CONTROL,
-    protocol::HEAD_DATE,
-    protocol::HEAD_EXT,
-    protocol::HEAD_LOCATION,
-    protocol::HEAD_SERVER,
-    protocol::HEAD_ST,
-    protocol::HEAD_USN,
+    HTTP_HEADER_CACHE_CONTROL,
+    HTTP_HEADER_DATE,
+    HTTP_HEADER_EXT,
+    HTTP_HEADER_LOCATION,
+    HTTP_HEADER_SERVER,
+    HTTP_HEADER_ST,
+    HTTP_HEADER_USN,
 ];
 
 impl TryFrom<MulticastResponse> for Response {
@@ -452,60 +470,56 @@ impl TryFrom<MulticastResponse> for Response {
         }
         headers::check_required(&response.headers, &REQUIRED_HEADERS_V10)?;
         headers::check_empty(
-            response.headers.get(protocol::HEAD_EXT).unwrap(),
-            protocol::HEAD_EXT,
+            response.headers.get(HTTP_HEADER_EXT).unwrap(),
+            HTTP_HEADER_EXT,
         )?;
 
-        let server = response.headers.get(protocol::HEAD_SERVER).unwrap();
-        let versions = match UA_ALL.captures(response.headers.get(protocol::HEAD_SERVER).unwrap()) {
+        let server = response.headers.get(HTTP_HEADER_SERVER).unwrap();
+        let versions = match UA_ALL.captures(server) {
             Some(captures) => ProductVersions {
-                operating_system: ProductVersion {
-                    name: captures.get(1).unwrap().as_str().to_string(),
-                    version: captures.get(2).unwrap().as_str().to_string(),
+                product: ProductVersion {
+                    name: captures.get(5).unwrap().as_str().to_string(),
+                    version: captures.get(6).unwrap().as_str().to_string(),
                 },
                 upnp: ProductVersion {
                     name: captures.get(3).unwrap().as_str().to_string(),
                     version: captures.get(4).unwrap().as_str().to_string(),
                 },
-                product: ProductVersion {
-                    name: captures.get(5).unwrap().as_str().to_string(),
-                    version: captures.get(6).unwrap().as_str().to_string(),
+                platform: ProductVersion {
+                    name: captures.get(1).unwrap().as_str().to_string(),
+                    version: captures.get(2).unwrap().as_str().to_string(),
                 },
             },
             None => {
                 error!("invalid value for server header '{}", server);
-                return Err(Error::MessageFormat(MessageErrorKind::InvalidFieldValue));
+                return invalid_field_value(HTTP_HEADER_SERVER, server).into();
             }
         };
 
         let max_age = headers::check_parsed_value::<u64>(
             &headers::check_regex(
-                response.headers.get(protocol::HEAD_CACHE_CONTROL).unwrap(),
-                protocol::HEAD_CACHE_CONTROL,
+                response.headers.get(HTTP_HEADER_CACHE_CONTROL).unwrap(),
+                HTTP_HEADER_CACHE_CONTROL,
                 &Regex::new(r"max-age[ ]*=[ ]*(\d+)").unwrap(),
             )?,
-            protocol::HEAD_CACHE_CONTROL,
+            HTTP_HEADER_CACHE_CONTROL,
         )?;
 
         let date = headers::check_not_empty(
-            response.headers.get(protocol::HEAD_DATE),
+            response.headers.get(HTTP_HEADER_DATE),
             "Thu, 01 Jan 1970 00:00:00 GMT",
         );
 
         let location = headers::check_not_empty(
-            response.headers.get(protocol::HEAD_LOCATION),
+            response.headers.get(HTTP_HEADER_LOCATION),
             "http://www.example.org",
         );
 
-        let service_name = headers::check_not_empty(
-            response.headers.get(protocol::HEAD_USN),
-            "undefined",
-        );
+        let service_name =
+            headers::check_not_empty(response.headers.get(HTTP_HEADER_USN), "undefined");
 
-        let search_target = headers::check_not_empty(
-            response.headers.get(protocol::HEAD_ST),
-            "undefined",
-        );
+        let search_target =
+            headers::check_not_empty(response.headers.get(HTTP_HEADER_ST), "undefined");
 
         let mut boot_id = 0u64;
         let mut config_id: Option<u64> = None;
@@ -514,14 +528,14 @@ impl TryFrom<MulticastResponse> for Response {
             boot_id = headers::check_parsed_value::<u64>(
                 response
                     .headers
-                    .get(protocol::HEAD_BOOTID)
+                    .get(HTTP_HEADER_BOOTID)
                     .unwrap_or(&"0".to_string()),
-                protocol::HEAD_BOOTID,
+                HTTP_HEADER_BOOTID,
             )?;
-            if let Some(s) = response.headers.get(protocol::HEAD_CONFIGID) {
+            if let Some(s) = response.headers.get(HTTP_HEADER_CONFIGID) {
                 config_id = s.parse::<u64>().ok();
             }
-            if let Some(s) = response.headers.get(protocol::HEAD_SEARCH_PORT) {
+            if let Some(s) = response.headers.get(HTTP_HEADER_SEARCH_PORT) {
                 search_port = s.parse::<u16>().ok();
             }
         }
@@ -539,11 +553,11 @@ impl TryFrom<MulticastResponse> for Response {
             date,
             versions,
             location: URI::from_str(&location)
-                .map_err(|_| Error::MessageFormat(MessageErrorKind::InvalidFieldValue))?,
+                .map_err(|_| invalid_header_value(HTTP_HEADER_LOCATION, &location))?,
             search_target: SearchTarget::from_str(&search_target)
-                .map_err(|_| Error::MessageFormat(MessageErrorKind::InvalidFieldValue))?,
+                .map_err(|_| invalid_field_value("SearchTarget", search_target))?,
             service_name: URI::from_str(&service_name)
-                .map_err(|_| Error::MessageFormat(MessageErrorKind::InvalidFieldValue))?,
+                .map_err(|_| invalid_field_value("URI", service_name))?,
             boot_id,
             config_id,
             search_port,

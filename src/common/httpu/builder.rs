@@ -47,6 +47,6 @@ impl RequestBuilder {
 
 impl From<RequestBuilder> for Request {
     fn from(rb: RequestBuilder) -> Self {
-        rb.request.clone()
+        rb.request
     }
 }

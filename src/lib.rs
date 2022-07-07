@@ -61,15 +61,9 @@
 #[macro_use]
 extern crate lazy_static;
 
-#[macro_use]
-extern crate log;
-
-use crate::common::xml;
-use crate::description::xml::{X_ELEM_MAJOR, X_ELEM_MINOR, X_ELEM_SPEC_VERSION};
-use quick_xml::{Error as XMLError, Writer};
+use error::invalid_field_value;
 use std::fmt::{Display, Error as FmtError, Formatter};
-use std::io::{Error as IOError, ErrorKind as IOErrorKind, Write};
-use std::str::{FromStr, Utf8Error};
+use std::str::FromStr;
 
 // ------------------------------------------------------------------------------------------------
 // Public Types
@@ -82,7 +76,7 @@ use std::str::{FromStr, Utf8Error};
 /// This allows the client to constrain the messaging to only the capabilities described by a
 /// specific version.
 ///
-#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SpecVersion {
     /// Denotes messages conforming to UPnP version
     /// [1.0](http://www.upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v1.0.pdf)
@@ -93,45 +87,6 @@ pub enum SpecVersion {
     /// Denotes messages conforming to UPnP version
     /// [2.0](http://www.upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v2.0.pdf)
     V20,
-}
-
-///
-/// This denotes the classes of errors that can arise while processing messages.
-///
-#[derive(Clone, Debug)]
-pub enum MessageErrorKind {
-    /// The response line of a message was invalid in some manner
-    InvalidResponseStatus,
-    /// The message could not be decoded from it's byte representation
-    InvalidEncoding,
-    /// The embedded version was incorrectly formatted
-    InvalidVersion,
-    /// The version in a message did not match the supported version
-    VersionMismatch,
-    /// A message header was incorrectly formatted
-    InvalidHeaderFormat,
-    /// A required field was either missing or empty
-    MissingRequiredField,
-    /// The field value did not match the expected type
-    FieldTypeMismatch,
-    /// The field value was not valid in the current context
-    InvalidFieldValue,
-    XmlFormattingError,
-}
-
-///
-/// This provides a common error type across the stack.
-///
-#[derive(Clone, Debug)]
-pub enum Error {
-    /// Some network error, more details provided by `std::io::Error`.
-    NetworkTransport(IOErrorKind),
-    Messaging,
-    /// Message construction, parsing, or validation error, more details provided by
-    /// `MessageErrorKind`.
-    MessageFormat(MessageErrorKind),
-    /// An operation you attempted is not supported.
-    Unsupported,
 }
 
 ///
@@ -175,71 +130,25 @@ impl Display for SpecVersion {
 }
 
 impl FromStr for SpecVersion {
-    type Err = Error;
+    type Err = error::MessageFormatError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "1.0" => Ok(SpecVersion::V10),
             "1.1" => Ok(SpecVersion::V11),
             "2.0" => Ok(SpecVersion::V20),
-            _ => Err(Error::MessageFormat(MessageErrorKind::InvalidVersion)),
+            _ => invalid_field_value("version", s).into(),
         }
-    }
-}
-
-impl<T: Write> xml::write::Writable<T> for SpecVersion {
-    fn write(&self, writer: &mut Writer<T>) -> Result<(), Error> {
-        let spec_version = xml::write::start_element(writer, X_ELEM_SPEC_VERSION)?;
-        xml::write::text_element(
-            writer,
-            X_ELEM_MAJOR,
-            match self {
-                SpecVersion::V10 => "1",
-                SpecVersion::V11 => "1",
-                SpecVersion::V20 => "2",
-            }
-            .as_bytes(),
-        )?;
-        xml::write::text_element(
-            writer,
-            X_ELEM_MINOR,
-            match self {
-                SpecVersion::V10 => "0",
-                SpecVersion::V11 => "1",
-                SpecVersion::V20 => "0",
-            }
-            .as_bytes(),
-        )?;
-        spec_version.end(writer).map_err(|e| e.into())
-    }
-}
-
-// ------------------------------------------------------------------------------------------------
-
-impl From<IOError> for Error {
-    fn from(e: IOError) -> Self {
-        error!("IO error: {:?}", e);
-        Error::NetworkTransport(e.kind())
-    }
-}
-
-impl From<Utf8Error> for Error {
-    fn from(e: Utf8Error) -> Self {
-        error!("UTF-8 encoding error: {:?}", e);
-        Error::MessageFormat(MessageErrorKind::InvalidEncoding)
-    }
-}
-
-impl From<XMLError> for Error {
-    fn from(e: XMLError) -> Self {
-        error!("XML error: {:?}", e);
-        Error::MessageFormat(MessageErrorKind::XmlFormattingError)
     }
 }
 
 // ------------------------------------------------------------------------------------------------
 // Modules
 // ------------------------------------------------------------------------------------------------
+
+pub mod common;
+
+pub mod error;
 
 pub mod discovery;
 
@@ -249,8 +158,4 @@ pub mod control;
 
 pub mod eventing;
 
-pub use common::xml::dom_core;
-
-// ------------------------------------------------------------------------------------------------
-
-pub(crate) mod common;
+pub mod syntax;

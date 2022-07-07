@@ -93,10 +93,8 @@ pub struct ControlPoint {
 ///
 #[derive(Clone, Debug)]
 pub struct ProductVersion {
-    /// The name part of the product token
-    pub name: String,
-    /// The version part of the product token
-    pub version: String,
+    name: String,
+    version: String,
 }
 
 ///
@@ -105,14 +103,22 @@ pub struct ProductVersion {
 ///
 #[derive(Clone, Debug)]
 pub struct ProductVersions {
-    pub operating_system: ProductVersion,
-    pub upnp: ProductVersion,
-    pub product: ProductVersion,
+    product: ProductVersion,
+    upnp: ProductVersion,
+    platform: ProductVersion,
 }
 
 // ------------------------------------------------------------------------------------------------
 // Implementations
 // ------------------------------------------------------------------------------------------------
+
+const DEFAULT_PRODUCT_NAME: &str = env!("CARGO_PKG_NAME");
+const DEFAULT_PRODUCT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+lazy_static! {
+    static ref PLATFORM_NAME: String = os::platform_name();
+    static ref PLATFORM_VERSION: String = os::platform_version();
+}
 
 impl Display for ProductVersion {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
@@ -121,30 +127,86 @@ impl Display for ProductVersion {
 }
 
 impl ProductVersion {
-    pub const fn new() -> Self {
-        ProductVersion {
-            name: String::new(),
-            version: String::new(),
+    pub fn for_default_product() -> Self {
+        Self {
+            name: DEFAULT_PRODUCT_NAME.to_string(),
+            version: DEFAULT_PRODUCT_VERSION.to_string(),
+        }
+    }
+    pub fn for_product(name: &str, version: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            version: version.to_string(),
         }
     }
 
-    pub fn for_upnp(version: &SpecVersion) -> Self {
-        ProductVersion {
+    pub fn for_default_upnp() -> Self {
+        Self {
+            name: UPNP_STRING.to_string(),
+            version: SpecVersion::default().to_string(),
+        }
+    }
+
+    pub fn for_upnp_version(version: SpecVersion) -> Self {
+        Self {
             name: UPNP_STRING.to_string(),
             version: version.to_string(),
         }
+    }
+
+    pub fn for_platform() -> Self {
+        Self {
+            name: PLATFORM_NAME.clone(),
+            version: PLATFORM_VERSION.clone(),
+        }
+    }
+
+    pub fn name(&self) -> &String {
+        &self.name
+    }
+
+    pub fn version(&self) -> &String {
+        &self.version
     }
 }
 
 // ------------------------------------------------------------------------------------------------
 
+impl Default for ProductVersions {
+    fn default() -> Self {
+        Self {
+            product: ProductVersion::for_default_product(),
+            upnp: ProductVersion::for_default_upnp(),
+            platform: ProductVersion::for_platform(),
+        }
+    }
+}
+
 impl Display for ProductVersions {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        write!(
-            f,
-            "{} {} {}",
-            self.operating_system, self.upnp, self.product
-        )
+        write!(f, "{} {} {}", self.product, self.upnp, self.platform)
+    }
+}
+
+impl ProductVersions {
+    pub fn new(product: ProductVersion, upnp: ProductVersion, platform: ProductVersion) -> Self {
+        Self {
+            product,
+            upnp,
+            platform,
+        }
+    }
+
+    pub fn product_version(&self) -> &ProductVersion {
+        &self.product
+    }
+
+    pub fn upnp_version(&self) -> &ProductVersion {
+        &self.upnp
+    }
+
+    pub fn platform_version(&self) -> &ProductVersion {
+        &self.platform
     }
 }
 
@@ -156,4 +218,54 @@ pub mod search;
 
 pub mod notify;
 
-mod protocol;
+// ------------------------------------------------------------------------------------------------
+
+#[cfg(target_os = "macos")]
+mod os {
+    use std::process::Command;
+
+    #[inline]
+    pub fn platform_name() -> String {
+        let cmd_output = Command::new("sw_vers")
+            .arg("-productName")
+            .output()
+            .expect("Couldn't find `sw_vers`");
+        let output_string = String::from_utf8(cmd_output.stdout).expect("Oh crap");
+        output_string.trim().to_string()
+    }
+
+    #[inline]
+    pub fn platform_version() -> String {
+        let cmd_output = Command::new("sw_vers")
+            .arg("-productVersion")
+            .output()
+            .expect("Couldn't find `sw_vers`");
+        let output_string = String::from_utf8(cmd_output.stdout).expect("Oh crap");
+        output_string.trim().to_string()
+    }
+}
+
+#[cfg(all(not(target_os = "macos"), target_family = "unix"))]
+mod os {
+    use std::process::Command;
+
+    #[inline]
+    pub fn platform_name() -> String {
+        let cmd_output = Command::new("uname")
+            .arg("-o")
+            .output()
+            .expect("Couldn't find `uname`");
+        let output_string = String::from_utf8(cmd_output.stdout).expect("Oh crap");
+        output_string.trim().to_string()
+    }
+
+    #[inline]
+    pub fn platform_version() -> String {
+        let cmd_output = Command::new("uname")
+            .arg("-r")
+            .output()
+            .expect("Couldn't find `uname`");
+        let output_string = String::from_utf8(cmd_output.stdout).expect("Oh crap");
+        output_string.trim().to_string()
+    }
+}

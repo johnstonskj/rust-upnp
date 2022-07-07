@@ -2,7 +2,10 @@
 What's this all about then?
 */
 
-use crate::common::httpu::protocol;
+use crate::syntax::{
+    HTTP_HEADER_LINE_SEP, HTTP_HEADER_SEP, HTTP_MATCH_ANY_RESOURCE, HTTP_PROTOCOL_NAME,
+    HTTP_PROTOCOL_VERSION,
+};
 use std::collections::HashMap;
 
 // ------------------------------------------------------------------------------------------------
@@ -26,25 +29,25 @@ impl Request {
             "{} {} {}/{}{}",
             self.message,
             match &self.resource {
-                None => protocol::ANY_RESOURCE.to_string(),
+                None => HTTP_MATCH_ANY_RESOURCE.to_string(),
                 Some(resource) => resource.clone(),
             },
-            protocol::NAME,
-            protocol::VERSION,
-            protocol::LINE_SEP,
+            HTTP_PROTOCOL_NAME,
+            HTTP_PROTOCOL_VERSION,
+            HTTP_HEADER_LINE_SEP,
         )
     }
 
     fn all_headers(&self) -> String {
         self.headers
             .iter()
-            .map(|(k, v)| format!("{}{}{}", k, protocol::HEADER_SEP, v))
+            .map(|(k, v)| format!("{}{}{}", k, HTTP_HEADER_SEP, v))
             .collect::<Vec<String>>()
-            .join(protocol::LINE_SEP)
+            .join(HTTP_HEADER_LINE_SEP)
     }
 
     fn body(&self) -> String {
-        format!("{}{}", protocol::LINE_SEP, protocol::LINE_SEP)
+        format!("{}{}", HTTP_HEADER_LINE_SEP, HTTP_HEADER_LINE_SEP)
     }
 }
 

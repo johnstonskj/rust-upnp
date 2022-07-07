@@ -7,7 +7,11 @@ More detailed description, with
 
 */
 
-use crate::Error;
+use crate::error::{xml_error, Error};
+use crate::syntax::{
+    XML_ATTR_NAMESPACE, XML_DECL_VERSION, XML_ELEM_MAJOR, XML_ELEM_MINOR, XML_ELEM_SPEC_VERSION,
+};
+use crate::SpecVersion;
 use quick_xml::events::{attributes::Attribute, BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 use quick_xml::Writer;
 use std::io::Write;
@@ -29,7 +33,7 @@ pub trait RootWritable<T: Write>: Writable<T> {
     fn write_root(&self, writer: T) -> Result<T, Error> {
         let mut xml = Writer::new(writer);
 
-        start(&mut xml)?;
+        start(&mut xml).map_err(xml_error)?;
 
         self.write(&mut xml)?;
 
@@ -37,17 +41,13 @@ pub trait RootWritable<T: Write>: Writable<T> {
     }
 }
 
-pub const X_DECL_VERSION: &[u8] = b"1.0";
-
-pub const X_ATTR_NAMESPACE: &str = "xmlns";
-
 // ------------------------------------------------------------------------------------------------
 // Public Functions
 // ------------------------------------------------------------------------------------------------
 
 pub fn start<T: Write>(writer: &mut Writer<T>) -> Result<(), quick_xml::Error> {
     writer
-        .write_event(Event::Decl(BytesDecl::new(X_DECL_VERSION, None, None)))
+        .write_event(Event::Decl(BytesDecl::new(XML_DECL_VERSION, None, None)))
         .map(|_| ())
 }
 
@@ -72,11 +72,11 @@ pub fn start_element<T: Write>(
 pub fn start_ns_element<T: Write>(
     writer: &mut Writer<T>,
     name: &'static [u8],
-    namespace: &str,
+    namespace: &'static str,
     prefix: Option<&str>,
 ) -> Result<Element, quick_xml::Error> {
     let xmlns = [
-        X_ATTR_NAMESPACE,
+        XML_ATTR_NAMESPACE,
         if prefix.is_some() { ":" } else { "" },
         if let Some(p) = prefix { p } else { "" },
     ]
@@ -122,6 +122,39 @@ pub fn text_element<T: Write>(
 impl Element {
     pub fn end<T: Write>(&self, writer: &mut Writer<T>) -> Result<(), quick_xml::Error> {
         end_element(writer, self.name)
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+
+// ------------------------------------------------------------------------------------------------
+
+impl<T: Write> Writable<T> for SpecVersion {
+    fn write(&self, writer: &mut Writer<T>) -> Result<(), Error> {
+        let spec_version = start_element(writer, XML_ELEM_SPEC_VERSION).map_err(xml_error)?;
+        text_element(
+            writer,
+            XML_ELEM_MAJOR,
+            match self {
+                SpecVersion::V10 => "1",
+                SpecVersion::V11 => "1",
+                SpecVersion::V20 => "2",
+            }
+            .as_bytes(),
+        )
+        .map_err(xml_error)?;
+        text_element(
+            writer,
+            XML_ELEM_MINOR,
+            match self {
+                SpecVersion::V10 => "0",
+                SpecVersion::V11 => "1",
+                SpecVersion::V20 => "0",
+            }
+            .as_bytes(),
+        )
+        .map_err(xml_error)?;
+        spec_version.end(writer).map_err(xml_error)
     }
 }
 

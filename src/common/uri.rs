@@ -18,8 +18,6 @@ pub type URL = URI;
 // Implementations
 // ------------------------------------------------------------------------------------------------
 
-impl URI {}
-
 impl Display for URI {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         write!(f, "{}", self.0)
@@ -33,6 +31,8 @@ impl FromStr for URI {
         Ok(URI(s.to_string()))
     }
 }
+
+impl URI {}
 
 // ------------------------------------------------------------------------------------------------
 // Private Types

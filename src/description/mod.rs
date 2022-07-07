@@ -143,5 +143,3 @@ fn split_type_and_version(type_name: String) -> Result<(String, String), ()> {
 pub mod device;
 
 pub mod service;
-
-pub(crate) mod xml;
