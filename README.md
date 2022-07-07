@@ -139,6 +139,7 @@ OPTIONS:
   which had a reported vulnerability.
 * Moved all *protocol* constants into the `syntax` module.
 * Using crate `os_version` for platform detection.
+* Added build file and adsjusted workflow to get a clean Windows build.
 
 **Version 0.1.0**
 
