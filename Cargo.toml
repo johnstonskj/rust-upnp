@@ -4,12 +4,15 @@ version = "0.2.0"
 authors = ["Simon Johnston <johnstonskj@gmail.com>"]
 edition = "2018"
 description = "Provides basic Universal Plug and Play (UPnP) protocol implementations"
+keywords = ["networking", "protocol"]
+categories = ["network-programming", "parser-implementations"]
 documentation = "https://docs.rs/upnp/"
 repository = "https://github.com/johnstonskj/rust-upnp.git"
 license = "MIT"
 readme = "README.md"
 publish = true
 default-run = "upnp"
+build = "build.rs"
 
 [[bin]]
 name = "upnp"
@@ -38,11 +41,3 @@ tracing-subscriber = { optional = true, version = "0.3", features = ["env-filter
 
 [dev-dependencies]
 pretty_assertions = "1.2"
-
-[target.i686-pc-windows-msvc.packet]
-rustc-link-search = ["lib"]
-rustc-link-lib = [":Packet.lib"]
-
-[target.x86_64-pc-windows-msvc.packet]
-rustc-link-search = ["lib/x64"]
-rustc-link-lib = [":Packet.lib"]
