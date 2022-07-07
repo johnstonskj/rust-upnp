@@ -2,6 +2,7 @@ use human_panic::setup_panic;
 use std::str::FromStr;
 use structopt::StructOpt;
 use tracing::info;
+use upnp_rs::common::interface::IP;
 use upnp_rs::discovery::search::*;
 use upnp_rs::SpecVersion;
 
@@ -9,7 +10,7 @@ use upnp_rs::SpecVersion;
 // Public Types
 // ------------------------------------------------------------------------------------------------
 
-#[derive(Debug, StructOpt)]
+#[derive(StructOpt)]
 #[structopt(name = "upnp")]
 struct CommandLine {
     /// The level of logging to perform, from off to trace, default is off
@@ -20,9 +21,9 @@ struct CommandLine {
     #[structopt(long)]
     interface: Option<String>,
 
-    /// The IP version, 4 or 6, to use when binding, default is 4
-    #[structopt(long)]
-    ip_version: Option<u8>,
+    /// Use IPv6 instead of the default v4
+    #[structopt(long, short = "6")]
+    use_ipv6: bool,
 
     /// The UPnP version to use, 1.0, 1.1, or 2.0, default is 1.0
     #[structopt(long, short = "V")]
@@ -32,7 +33,7 @@ struct CommandLine {
     cmd: Command,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(StructOpt)]
 enum Command {
     /// Issue a multicast search to find devices
     Search {
@@ -126,6 +127,7 @@ pub fn main() {
         } => do_search(
             parse_version(args.spec_version),
             args.interface,
+            if args.use_ipv6 { IP::V6 } else { IP::V4 },
             search_target,
             domain,
             max_wait,
@@ -188,12 +190,14 @@ fn parse_version(version: Option<String>) -> SpecVersion {
 fn do_search(
     spec_version: SpecVersion,
     bind_to_interface: Option<String>,
+    ip_version: IP,
     search_target: Option<CLSearchTarget>,
     domain: Option<String>,
     max_wait_time: Option<u8>,
 ) {
     let mut options = Options::default_for(spec_version);
     options.network_interface = bind_to_interface;
+    options.network_version = Some(ip_version);
     if let Some(search_target) = search_target {
         options.search_target = match search_target {
             CLSearchTarget::All => SearchTarget::All,
