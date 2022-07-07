@@ -25,7 +25,7 @@ jobs:
 
       - name: Content
         if: runner.os == 'Windows'
-        run: dir
+        run: dir lib
 
       - name: Format
         run: cargo fmt -- --check
